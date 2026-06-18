@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>知识库练习</title>
+<style>
+  :root {
+    --bg: #f7f7f8;
+    --card: #ffffff;
+    --border: #e4e4e7;
+    --text: #18181b;
+    --muted: #71717a;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --correct: #16a34a;
+    --correct-bg: #dcfce7;
+    --correct-border: #86efac;
+    --wrong: #dc2626;
+    --wrong-bg: #fee2e2;
+    --wrong-border: #fca5a5;
+    --kb-tag: #2563eb;
+    --cs-tag: #9333ea;
+    --explanation-bg: #fafafa;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    line-height: 1.6;
+    padding: 24px 16px 120px;
+  }
+  .container { max-width: 820px; margin: 0 auto; }
+  header h1 { font-size: 22px; margin: 0 0 4px; }
+  header .meta { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+
+  .result-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 22px;
+    margin-bottom: 24px;
+    display: none;
+  }
+  .result-card.show { display: block; }
+  .result-card h2 { margin: 0 0 6px; font-size: 18px; }
+  .result-card .score { font-size: 36px; font-weight: 700; color: var(--primary); line-height: 1.1; margin: 6px 0; }
+  .result-card .score.low { color: var(--wrong); }
+  .result-card .score.high { color: var(--correct); }
+  .result-card .breakdown { font-size: 13px; color: var(--muted); }
+
+  .question-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .question-card.correct { border-color: var(--correct-border); }
+  .question-card.wrong { border-color: var(--wrong-border); background: #fff7f7; }
+
+  .question-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .tag {
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+    letter-spacing: 0.02em;
+  }
+  .tag.kb { background: var(--kb-tag); }
+  .tag.cs { background: var(--cs-tag); }
+  .question-number { font-weight: 600; color: var(--text); }
+  .question-text {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    word-break: break-word;
+  }
+  .question-text code,
+  .options code,
+  .explanation code {
+    background: #f4f4f5;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.92em;
+  }
+
+  .options { list-style: none; padding: 0; margin: 0; }
+  .options li {
+    padding: 10px 14px;
+    margin: 6px 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    transition: background 0.1s, border-color 0.1s;
+  }
+  .options li:hover:not(.locked) { background: #f4f4f5; }
+  .options li.selected { border-color: var(--primary); background: #eff6ff; }
+  .options li.locked { cursor: default; }
+  .options li.correct-option { border-color: var(--correct); background: var(--correct-bg); }
+  .options li.wrong-option { border-color: var(--wrong); background: var(--wrong-bg); }
+  .options li.wrong-option .option-text { text-decoration: line-through; }
+  .options input[type=radio] { margin-top: 4px; }
+  .option-letter { font-weight: 600; color: var(--muted); min-width: 18px; }
+  .options li.correct-option .option-letter { color: var(--correct); }
+  .options li.wrong-option .option-letter { color: var(--wrong); }
+  .option-text { flex: 1; word-break: break-word; }
+  .verdict {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .verdict.correct { color: var(--correct); }
+  .verdict.wrong { color: var(--wrong); }
+
+  .explanation {
+    display: none;
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: var(--explanation-bg);
+    border-left: 3px solid var(--primary);
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+  }
+  .explanation.show { display: block; }
+  .explanation .label {
+    font-weight: 700;
+    margin-bottom: 4px;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .explanation .source-ref {
+    display: block;
+    margin-top: 8px;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 11.5px;
+    color: var(--muted);
+    word-break: break-all;
+  }
+
+  .submit-bar {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    max-width: 820px;
+    margin: 0 auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  }
+  .progress { font-size: 13px; color: var(--muted); }
+  button.submit {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 9px 22px;
+    font-size: 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  button.submit:disabled { opacity: 0.45; cursor: not-allowed; }
+  button.submit:hover:not(:disabled) { background: var(--primary-hover); }
+
+  @media (max-width: 600px) {
+    body { padding: 16px 12px 110px; }
+    .question-card { padding: 14px 14px; }
+    header h1 { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1 id="exam-title">知识库练习</h1>
+    <div class="meta" id="exam-meta"></div>
+  </header>
+
+  <div class="result-card" id="result-card">
+    <h2>测验结果</h2>
+    <div class="score" id="result-score">— / —</div>
+    <div class="breakdown" id="result-breakdown"></div>
+  </div>
+
+  <div id="questions-root"></div>
+</div>
+
+<div class="submit-bar">
+  <div class="progress" id="progress">已作答 0 / 0</div>
+  <button class="submit" id="submit-btn" disabled>提交答案</button>
+</div>
+
+<script id="exam-data" type="application/json">{
+  "title": "知识库练习 · 广度采样",
+  "generated_at": "2026-05-22T19:14:00+09:00",
+  "topic": "breadth-sample",
+  "questions": [
+    {
+      "category": "knowledge-base",
+      "subcategory": "narrative",
+      "question": "根据 STP (自成交防止) 叙述, 当撮合判定自成交后, 哪一侧的订单被撤?",
+      "options": [
+        "后到的 taker 单 (主动方)",
+        "双方同时撤 (cancel_both)",
+        "已挂在 orderbook 上的 maker 单 (passive cancel), 撮合调 `onPassiveCancel(matcher, oppositeOrder, ActionCode.CANCEL_FOR_STP)`, `ActionCode.CANCEL_FOR_STP` 值固定为 57",
+        "由用户在 `pm_user_config.stp_mode` 自定义决定"
+      ],
+      "correct": 2,
+      "explanation": "OKJ 把 STP 模式从 OKX 的三档收敛到 `cancel_maker` 一档, 并将 `pm_user_config.stp_mode DEFAULT 1` 固化为 cancel_maker; 用户**无法**自定义。`MatchOrderService` 在配对发现自成交时调 `onPassiveCancel` 撤掉 orderbook 上的对手 (maker) 单, `ActionCode.CANCEL_FOR_STP=57`; 柜台再翻译为 proto `CancelSourceEnum.FROM_STP=32`, 后端不下发文案、由前端 i18n 渲染。",
+      "source_ref": "narratives/flows/self-trade-prevention.md#L120-L145"
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "databases",
+      "question": "MySQL InnoDB 在 `REPEATABLE READ` 隔离级别下避免幻读的核心机制是?",
+      "options": [
+        "使用 next-key lock (record lock + gap lock) 在范围扫描的当前读路径上锁住间隙",
+        "MVCC 快照读已可消除幻读, 无需任何锁",
+        "完全遵循 SQL 标准, `REPEATABLE READ` 必然出现幻读",
+        "自动提升到 `SERIALIZABLE` 级别"
+      ],
+      "correct": 0,
+      "explanation": "SQL 标准的 `REPEATABLE READ` 允许幻读; InnoDB 通过 next-key lock 在当前读 (`SELECT ... FOR UPDATE` / `INSERT` 前检查) 上锁住间隙避免幻行插入。纯快照读路径靠 MVCC 避免幻读, 但当前读必须靠锁。",
+      "source_ref": null
+    },
+    {
+      "category": "knowledge-base",
+      "subcategory": "map-services",
+      "question": "`okcoin-paragon` 仓库中负责把撮合下游事件通过 Kafka 生产到 `market_spotmatcher_t` 的子模块是?",
+      "options": [
+        "paragon-node",
+        "paragon-exchange",
+        "paragon-client",
+        "paragon-replay"
+      ],
+      "correct": 3,
+      "explanation": "`map/topics.json` 的 `market_spotmatcher_t` 生产者证据指向 `paragon-replay/src/main/java/com/okcoin/exchange/paragon/replay/downstream/kafka/KafkaSenderAgent.java`, 主题由 `okcoin.paragon.replay.kafka.topic` 注入。",
+      "source_ref": "map/topics.json#market_spotmatcher_t"
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "databases",
+      "question": "关于 B+ 树与 LSM 树在写密集场景下的权衡, 以下哪项最准确?",
+      "options": [
+        "LSM 树写入立即落盘到最终位置, 因此写延迟比 B+ 树低",
+        "B+ 树写入需要原地更新 + 可能页分裂, 顺序写吞吐通常低于 LSM 树; 代价是 LSM 读放大, 需 bloom filter 辅助",
+        "LSM 树读路径稳定 O(log N), 不需要 bloom filter",
+        "B+ 树本质上比 LSM 树更适合写密集场景"
+      ],
+      "correct": 1,
+      "explanation": "LSM 把随机写转为顺序追加 (memtable → SSTable), 写吞吐显著高于 B+ 树的原地更新模型; 读路径需要查多层 SSTable, 通常依赖 bloom filter 减少无谓 I/O。",
+      "source_ref": null
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "distributed-systems",
+      "question": "关于 CAP 定理中的「C」(Consistency) 与 ACID 的「C」, 以下哪项最准确?",
+      "options": [
+        "二者完全等价 (都指业务不变量保持)",
+        "CAP 的 C 指 BASE 模型中的「Basically Available」",
+        "CAP 的 C 等价于 linearizability — 单对象的强一致 / 实时序保证; ACID 的 C 是跨表 / 跨行的业务不变量 (如外键 / check 约束); 同名异义",
+        "CAP 的 C 指 eventual consistency, 最终一致即满足"
+      ],
+      "correct": 2,
+      "explanation": "CAP 的 C 是分布式系统层面的 linearizability (Gilbert & Lynch 2002 形式化); ACID 的 C 是单数据库内事务结束后业务不变量仍成立 (依赖应用 / 约束)。前者讨论网络分区下还能不能读到最新写, 后者讨论事务边界内业务规则不被破坏 — 两个层面完全无关。",
+      "source_ref": null
+    },
+    {
+      "category": "knowledge-base",
+      "subcategory": "narrative",
+      "question": "根据「全站停止」(STW / 现货交易停止) 叙述, boss 触发全站停止时, MySQL `pm_hosts.status` 字段被写为何值?",
+      "options": [
+        "0 (`HostStatusEnum.RUNNING`)",
+        "-3 (`HostStatusEnum.PAUSE`) — DB 真值; 柜台从下次轮询读到 -3 后把内存 `StwStatus` 映射切换, 拒绝所有 `OP_ORDER` 写入",
+        "1 (`HostStatusEnum.PAUSED`)",
+        "-99 (`HostStatusEnum.FORCE_HALT`)"
+      ],
+      "correct": 1,
+      "explanation": "`HostStatusEnum.PAUSE = -3` 是 DB 真值, `StwStatus` 是其内存映射, 形成「DB 真值 + 内存映射」双枚举两层架构。`AdminFullStopController` 写库后, 同时通过 `ExToolPushHelper.pushFullStopMessage` 推 `trade-fullstop` 频道给在线 WS 用户。`pause()` 无参与 RESTART 白名单存在不对称, 是叙述特别记录的细节。",
+      "source_ref": "narratives/flows/site-wide-trade-halt.md"
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "distributed-systems",
+      "question": "关于 Lamport timestamp 与 vector clock 在并发事件因果关系判定上的差别, 以下哪项最准确?",
+      "options": [
+        "Lamport timestamp 给出标量全序, 满足「a → b ⇒ ts(a) < ts(b)」但反向不成立 — 无法区分「并发」与「因果」; vector clock 用 N 维向量 + 偏序, 能精确判定 a → b / b → a / a‖b 三种关系",
+        "两者完全等价, 只是命名不同",
+        "Vector clock 永远比 Lamport timestamp 节省空间",
+        "Lamport timestamp 需要严格物理时钟同步 (NTP), vector clock 不需要"
+      ],
+      "correct": 0,
+      "explanation": "Lamport (1978) 单标量 + max(local, recv)+1 规则, 只保证「a→b 蕴含 ts(a)<ts(b)」, 反向不成立, 无法区分并发与因果。Vector clock 用 N 维向量, 通过偏序 (v ≤ v′ 当且仅当所有维都 ≤) 精确捕获 happens-before, 代价是 O(N) 空间。Lamport / vector 都不需要物理时钟同步, 完全逻辑时钟。",
+      "source_ref": null
+    },
+    {
+      "category": "knowledge-base",
+      "subcategory": "narrative",
+      "question": "根据交易密码 (Trade Password) 叙述, priapi 端 `T-Authorization` (交易密码 JWT) 的**主动**校验只发生在哪几个端点?",
+      "options": [
+        "所有 `/priapi/v5/trade/**` 路由",
+        "仅 `/priapi/v5/trade/order` 一个端点",
+        "OpenAPI (`/api/v5/**`) 上, 不在 priapi 上",
+        "`/priapi/v5/trade/order` / `/amend-order` / `/amend-algos` / `/order-algo` 四个高敏写入端点 (`/scaled-orders` 与 `/simple/order` 显式豁免)"
+      ],
+      "correct": 3,
+      "explanation": "`Authorization` (session) 由 JWT 拦截器统一处理; `T-Authorization` (Trading Authorization, 第二因子) 只在这 4 个高敏写入接口显式调用 `MsgTokenUtil.parseJwtUser` 校验。`cryptoKey` / `secret` 等高敏密钥由 **AWS Secrets Manager** 管理而非 Apollo, 非敏感参数 (`expiration` / `refresh-interval` / `interceptor` / `exclude-path-patterns`) 在 Apollo `okcoin.security.jwt.*`。OpenAPI 走 API key + 签名, 不在交易密码叙述范围内。",
+      "source_ref": "narratives/flows/trade-password.md"
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "networking",
+      "question": "关于 TCP Reno 中 fast retransmit 与 fast recovery 的关系, 以下哪项最准确?",
+      "options": [
+        "Fast retransmit 重传所有未确认包, fast recovery 重传单个最早未确认包",
+        "Fast retransmit 是收到 3 个 duplicate ACK 时立即重传; fast recovery 是重传后不进入 slow start, 而是把 `cwnd` 减半并继续 AIMD",
+        "Fast retransmit 必须配合 SACK, fast recovery 必须配合 selective NACK",
+        "Fast recovery 是 fast retransmit 的同义词"
+      ],
+      "correct": 1,
+      "explanation": "fast retransmit 解决「何时立即重传」; fast recovery 解决「重传后窗口如何恢复」 — Reno 系是减半 + AIMD, 避免回到 slow start。",
+      "source_ref": null
+    },
+    {
+      "category": "knowledge-base",
+      "subcategory": "narrative",
+      "question": "根据 JP AML 每日限购 (Trade Limit Quota) 叙述, 柜台对 `PurchaseLimitExceededCache.isExceeded(userId)==true` 的用户**拦截**哪些下单方向?",
+      "options": [
+        "BUY + SELL 双向",
+        "仅 SELL (出场限制)",
+        "仅 BUY 单 (SELL 不受限) — 4 个 Processor 在 `commonPreCheck` / `placeOrderStop` 上仅对 BUY 单 + `isExceeded==true` 抛 `EXCEED_PURCHASE_LIMIT (200, 10010, -99)`",
+        "取决于币种白名单 / 黑名单"
+      ],
+      "correct": 2,
+      "explanation": "AML 离线计算「日交易额超过 KYC 资产 + 收入 N 倍」的用户被写入 legacy Redis SET `aml_suspicious_deposit_users` (`@Qualifier(\"legacy\")`), `PurchaseLimitExceededCache` 每 120s 拉取。`PlaceOrderProcessor.commonPreCheck` / `AmendOrderProcessor.commonPreCheck` / `PlaceOrderStopProcessor.placeOrderStop` / `AmendOrderStopProcessor.commonPreCheck` 4 个 Processor 都只对 BUY 单短路拒单。错误码三语 i18n key 模板 `trading_userapimsg_error_code_biz_<bizCode>` (JP 段号 10000-19999)。",
+      "source_ref": "narratives/flows/trade-limit-quota.md"
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "networking",
+      "question": "gRPC 在 HTTP/2 之上提供 4 种 RPC 模式 (unary / server-streaming / client-streaming / bidi-streaming)。以下哪一种**不**是 gRPC 原生支持的 RPC 模式?",
+      "options": [
+        "Unary (一发一回)",
+        "Server-streaming (一发多回)",
+        "Client-streaming (多发一回)",
+        "「Broadcast」(服务端**主动**单向推给**所有**已连接客户端) — 这超出 HTTP/2 的 stream 即-请求-即-响应模型, 需在应用层用 fan-out / pub-sub (Kafka / Redis pub-sub) 实现"
+      ],
+      "correct": 3,
+      "explanation": "gRPC 4 种模式都建立在 HTTP/2 单 stream 上, request / response 都是同一 stream 内的 framed message 序列。Broadcast 需要服务端维护连接表 + 显式 fan-out, 不是 RPC 原语;Web 端常用 SSE / WebSocket 实现 server-push 广播。",
+      "source_ref": null
+    },
+    {
+      "category": "knowledge-base",
+      "subcategory": "endpoints",
+      "question": "REST 端点 `POST /partitions/{partitionId}/snapshot` 的处理方在 map 中记录为?",
+      "options": [
+        "`okcoin-paragon` 的 paragon-manager 模块 (`MatcherController.fetchSnapshotInfoAndStoreInCache`)",
+        "`okcoin-jove-order`",
+        "`okcoin-jove-replay`",
+        "`okcoin-aircraft-rest`"
+      ],
+      "correct": 0,
+      "explanation": "`map/endpoints.json` 该端点的 handler_file 指向 `paragon-manager/src/main/java/com/okcoin/exchange/paragon/manager/controller/MatcherController.java`, handler_symbol 为 `fetchSnapshotInfoAndStoreInCache`。`/partitions/**` 系列都归 paragon-manager。",
+      "source_ref": "map/endpoints.json#POST /partitions/{partitionId}/snapshot"
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "concurrency",
+      "question": "关于 Linux kernel 大量使用的 RCU (Read-Copy-Update) 同步原语, 以下哪项最准确?",
+      "options": [
+        "读者必须持锁、写者无锁",
+        "读者**完全不持锁、近乎零开销** (仅需禁抢占); 写者拷贝整段数据修改后通过指针原子替换, 旧版本需等待「宽限期 (grace period, 所有 reader 完成上一次读临界区)」结束后才能回收",
+        "RCU 是 spinlock 的别名, 仅适用于极短临界区",
+        "RCU 自动消除 ABA 问题, 无需任何辅助手段"
+      ],
+      "correct": 1,
+      "explanation": "RCU 把代价从读者转移给写者: 读者侧 `rcu_read_lock()` 仅禁抢占, 几乎零开销; 写者复制 + 原子指针 swap + `synchronize_rcu()` 等所有读者退出后回收旧版本。适用于读多写少且读路径延迟敏感的场景 (路由表、dcache、IDR)。Grace period 由 quiescent state 检测实现, 不是固定时长。",
+      "source_ref": null
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "concurrency",
+      "question": "关于乐观锁 (Optimistic Concurrency Control, e.g. 版本号 / CAS) 与悲观锁 (Pessimistic, e.g. `SELECT ... FOR UPDATE`) 的工程权衡, 以下哪项最准确?",
+      "options": [
+        "乐观锁吞吐总是高于悲观锁",
+        "悲观锁完全避免冲突, 不需要任何回滚机制",
+        "二者底层实现完全等价, 仅命名不同",
+        "冲突率低时, 乐观锁吞吐更高 (无锁等待开销); 冲突率高时, 悲观锁更优 (避免反复重试 + 潜在活锁); 选择应基于实测冲突率, 而非默认偏好"
+      ],
+      "correct": 3,
+      "explanation": "乐观锁假设冲突罕见 — 读时不锁, 写时检查版本号 / CAS, 失败重试。高冲突下重试浪费 CPU 且可能活锁。悲观锁阻塞等待, 在高冲突下吞吐更高、延迟更稳定, 代价是引入死锁可能 — 需要锁超时 / 死锁检测。Web 类短事务多用乐观锁; 金融批处理类长事务多用悲观锁。",
+      "source_ref": null
+    },
+    {
+      "category": "knowledge-base",
+      "subcategory": "datastores",
+      "question": "`aeron:paragon-replay-stream` 数据流在 map 中记录的两个**消费者**服务是?",
+      "options": [
+        "`okcoin-aircraft-rest` 和 `okcoin-jove-order`",
+        "`okcoin-paragon` 和 `okcoin-jove-replay`",
+        "`okcoin-pushv5` 和 `okj-aircraft-pushv3` (两者均嵌入 Aeron MediaDriver 订阅 paragon replay 流)",
+        "`okcoin-aircraft-measure` 和 `okj-price`"
+      ],
+      "correct": 2,
+      "explanation": "两者各自内嵌 `io.aeron.driver.MediaDriver`, 通过 paragon-replay-client + Aeron 拿到低延迟 depth/fill 流, 用于公共 push 通道。paragon 自己是上游, 不在消费者列表。",
+      "source_ref": "map/datastores.json#aeron:paragon-replay-stream"
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "data-structures",
+      "question": "一致性哈希 (consistent hashing) 相对简单 `hash(key) % N` 分片的**核心**优势是?",
+      "options": [
+        "节点数从 N 变 N±1 时, 仅约 `K/N` 的 key 需要迁移, 而不是几乎全部重洗",
+        "哈希计算速度更快",
+        "完全消除 hot key 现象",
+        "不需要虚拟节点也能均匀分布负载"
+      ],
+      "correct": 0,
+      "explanation": "简单 `% N` 在 N 变化时几乎所有 key 重映射, 不可扩缩。一致性哈希让 key 在环上的位置只受相邻节点影响, 加节点只迁移一段弧。Hot key / 均匀分布仍需虚拟节点配合。",
+      "source_ref": null
+    },
+    {
+      "category": "knowledge-base",
+      "subcategory": "narrative",
+      "question": "根据「止盈止损下单 + 触发」(Stop Order) 叙述, REST 层对 **SPOT 与 MARGIN-CASH** biz_type 在 `triggerPxType` 字段上的硬约束是?",
+      "options": [
+        "允许 `last` / `index` / `mark` 三种 (与永续一致)",
+        "只允许 `index` (指数价)",
+        "只允许 `last` (最新成交价) — `AttachOrderStopServiceImpl.baseCheckAttachTpSl` 与 `AlgoOrderServiceImpl` 强制 `TradeConsts.LAST_TRIGGER_PX_TYPE`, 其他值抛 `ILLEGAL_PARAMETER`",
+        "只允许 `mark` (标记价)"
+      ],
+      "correct": 2,
+      "explanation": "该约束在 REST 层就直接拒绝非 `last` 的 `triggerPxType`, 永续合约才放开 last / index / mark 三种。触发阶段 `TriggerOrderStopProcessor` 三段短路 (内存缺失 / 风控 hook / OCO 配对去重) 任一命中都会失败, 而 trigger 失败的话, 用户**完全看不到原因** (`bizErrorCode` 仅运维 / CS 可见)。TPSL 是 at-most-once 触发模型, 失败不重试。",
+      "source_ref": "narratives/flows/order-stop-trigger-flow.md"
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "algorithms",
+      "question": "将 N 个有序数组合并为一个有序数组 (总 K 个元素), 用最小堆的总体时间复杂度是?",
+      "options": [
+        "`O(N log N)`, 与总元素数 K 无关",
+        "`O(K log N)`, 其中 K 是总元素数, N 是数组数",
+        "`O(K × N)`",
+        "`O(K)`, 堆操作摊销 O(1)"
+      ],
+      "correct": 1,
+      "explanation": "堆中始终维持 ≤ N 个元素, K 个元素各做一次 push + 一次 pop, 每次 O(log N), 总 O(K log N)。比两两归并的 O(K log N) 等价但常数更低。",
+      "source_ref": null
+    },
+    {
+      "category": "knowledge-base",
+      "subcategory": "narrative",
+      "question": "根据 JoveLog 持久化叙述, `okcoin-jove-replay` → `okcoin-aircraft-dts` 的 Kafka 拓扑布局是?",
+      "options": [
+        "1 个 topic, 128 个分区, 1:1 映射到 counter shard",
+        "16 个 topic, 每个 8 分区, 按 shard 哈希分布",
+        "128 个 topic, 每个 1 分区, shard 号即 topic 号",
+        "8 个 topic (`jovelog_0_15` … `jovelog_112_127`), 每个 16 分区, 覆盖 128 个 counter shard"
+      ],
+      "correct": 3,
+      "explanation": "叙述明确「jove-replay 与 aircraft-dts 通过 Apollo 配置共享一份 8-topic 列表, stage 与 prod 完全一致」, 每 topic 16 分区, 总覆盖 128 shard (8 × 16)。此布局在 `okcoin.jove.replay.kafka.topics` / `okcoin.dts.jove.kafkaTopics` 两端对齐。",
+      "source_ref": "narratives/platform/jovelog-persistence.md#L81-L88"
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "algorithms",
+      "question": "Reservoir sampling (蓄水池抽样) 算法 R 用于从**未知长度**的数据流中均匀随机抽取 K 个样本, 关于其性质以下哪项最准确?",
+      "options": [
+        "流处理完毕时, 任意元素被选中的概率均为 K/N (N 为流总长度); 单遍 O(N) 时间 + 仅 O(K) 内存; 无需事先得知 N",
+        "必须先扫描整个流得到 N, 才能保证抽样均匀",
+        "时间复杂度为 O(N²), 因每个新元素都需重排所有已选样本",
+        "仅适用于元素可比较 (具备全序) 的流"
+      ],
+      "correct": 0,
+      "explanation": "算法 R: 前 K 个元素直接入池; 第 i (i > K) 个元素以概率 K/i 替换池中随机一个旧元素。归纳证明: 任一已扫元素最终被选概率恒为 K/N。无序、无比较, 单遍流式, 是分布式日志采样 / 大数据近似计算的标配。",
+      "source_ref": null
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "os",
+      "question": "关于使用 `mmap` 读取大文件 vs `read()` 系统调用, 以下哪一项**不**是 `mmap` 的优势?",
+      "options": [
+        "避免内核态 / 用户态之间的数据拷贝 (零拷贝, 直接把 page cache 映射到用户地址空间)",
+        "多个进程同时只读 `mmap` 同一文件时, **每个进程独占一份物理页拷贝**, 进程间隔离性更好",
+        "随机访问场景下不需要显式 `lseek`, 直接按地址解引用",
+        "支持通过 `madvise(MADV_SEQUENTIAL)` / `MADV_WILLNEED` 等显式提示, 配合内核 readahead 预热 page cache"
+      ],
+      "correct": 1,
+      "explanation": "B 是错误描述: 多进程只读 `mmap` 同一文件时**共享同一份物理页** (这正是 mmap 节省内存的来源)。A / C / D 都是真实优势。`mmap` 的真正代价在于 page fault 不可预测 (大文件随机访问可能产生大量 major fault)、对小文件 / 一次性短读反而比 `read()` 慢 (建立映射的开销摊不开)、错误处理不友好 (SIGBUS 而非 errno)。",
+      "source_ref": null
+    },
+    {
+      "category": "knowledge-base",
+      "subcategory": "narrative",
+      "question": "根据「可买可卖估算」叙述, 现货下单 BUY 单的估算价缓冲量 `1.05` (即 `askPx × 1.05`) 在线上 stage / prod 环境的实际来源是?",
+      "options": [
+        "Apollo `okcoin.max-available-buy-buffer`, stage 和 prod 均显式覆盖为 `1.05`",
+        "由 measure 离线计算后通过 gRPC 实时下发",
+        "Apollo 未设置该 key, 走代码默认 `1.05` (SELL 对应 `0.95`)",
+        "撮合层硬编码 5%, 与 Apollo 无关"
+      ],
+      "correct": 2,
+      "explanation": "叙述明确 stage 和 prod 的 `okcoin.max-available-{buy,sell}-buffer` 在 Apollo 都「未设置」, 因此走代码默认 `1.05` / `0.95`。「5%」是真实在线上生效的偏移, 但来源是代码默认而非显式 Apollo 配置。撮合层硬编码 5% 是另一回事 (现货限价的 `LIMIT_PRICE_OFFSET`)。",
+      "source_ref": "narratives/flows/available-balance-estimate.md#L107-L113"
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "security",
+      "question": "关于 JWT 相对服务器侧 session cookie 的**主要权衡**, 以下哪项最准确?",
+      "options": [
+        "JWT 自包含 + 服务器侧无状态便于水平扩展, 但**主动失效困难** (需要短 TTL + refresh token 或服务器侧吊销名单)",
+        "JWT 总是比 session cookie 更安全",
+        "JWT 仅适用于 OAuth 2.0",
+        "JWT 必须用对称密钥, 不能用非对称 (RSA / EdDSA)"
+      ],
+      "correct": 0,
+      "explanation": "JWT 把验证状态推给客户端, 服务器靠签名验证即可放行 ⇒ 无状态、易水平扩展; 代价是签发后无法立即作废, 必须短 TTL + refresh 或维护 revocation list 缓解。HS256 (对称) 与 RS256 / EdDSA (非对称) 都是合法签名算法。",
+      "source_ref": null
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "distributed-systems",
+      "question": "分布式 lease (租约) 系统中, 旧 leader 因 GC pause / CPU stall 「假死」后又苏醒, 可能在租约已被 coordinator 转交给新 leader 之后**仍然**向 storage 发起写入。防止这类「僵尸 leader」破坏一致性的标准做法是?",
+      "options": [
+        "把租约时长设得足够长, 让假死时间小于租约 — 物理上无法假死后还活着",
+        "Leader 在每次写入前都向 coordinator 做一次 ping 心跳确认仍持有租约",
+        "Storage 端用 username + password 等认证手段验证 leader 身份",
+        "引入单调递增的 **fencing token**: coordinator 颁发租约时附带递增 token, leader 写入必带 token, storage 记录已见最大 token 并拒收任何 `token < max_seen` 的请求 — 即使旧 leader 苏醒, 它持有的 token 已被新 leader 的更大 token 屏蔽"
+      ],
+      "correct": 3,
+      "explanation": "Martin Kleppmann 《DDIA》ch8 详述: GC pause / 进程 stall 长度无界 (尤其 JVM 大堆), 单靠租约时长无法兜底。Fencing token 把「时间正确性」转化为「序号单调性」, storage 侧做一次比较即可拒绝过期请求。这也是 Chubby / etcd / ZooKeeper 客户端文档强调「lease + fencing token 一起用」的根本原因。",
+      "source_ref": null
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "system-design",
+      "question": "关于消息系统的 at-least-once 投递语义, 以下哪项是**消费者**必须承担的责任?",
+      "options": [
+        "Broker 会自动保证每条消息恰好被处理一次 (exactly-once), 消费者无需做特殊处理",
+        "必须使用同步 commit, 否则违反 at-least-once",
+        "消费者需要实现幂等或显式去重 (例如按 message-id dedupe), 因为 broker 在 commit 失败 / rebalance / 网络抖动时会重投同一条消息",
+        "at-least-once 与 at-most-once 在投递保证上等价, 由消费者自由选择"
+      ],
+      "correct": 2,
+      "explanation": "at-least-once 保证不丢, 但允许重复 (消费者 commit 前崩溃或网络抖动 ⇒ 重投递)。把「恰好一次效果」推回应用层 — 要么副作用天然幂等, 要么基于 message-id / 业务键去重。同步 commit 只是一种实现细节, 不是 at-least-once 的定义。",
+      "source_ref": null
+    }
+  ]
+}</script>
+<script>
+(function () {
+  "use strict";
+
+  const dataEl = document.getElementById('exam-data');
+  const exam = JSON.parse(dataEl.textContent);
+  const root = document.getElementById('questions-root');
+  const titleEl = document.getElementById('exam-title');
+  const metaEl = document.getElementById('exam-meta');
+  const progressEl = document.getElementById('progress');
+  const submitBtn = document.getElementById('submit-btn');
+  const resultCard = document.getElementById('result-card');
+  const resultScore = document.getElementById('result-score');
+  const resultBreakdown = document.getElementById('result-breakdown');
+
+  const total = exam.questions.length;
+  const userAnswers = new Array(total).fill(null);
+  let submitted = false;
+
+  titleEl.textContent = exam.title || '知识库练习';
+  metaEl.textContent = '生成于 ' + (exam.generated_at || '') + ' · 共 ' + total + ' 题 · 提交前可自由修改答案';
+  progressEl.textContent = '已作答 0 / ' + total;
+
+  function escapeHTML(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+
+  // Render `text` with backtick-wrapped segments converted to <code>. Everything else is escaped.
+  function renderInlineCode(text) {
+    if (text == null) return '';
+    const parts = String(text).split(/(`[^`]+`)/g);
+    return parts.map(function (part) {
+      if (part.length >= 2 && part[0] === '`' && part[part.length - 1] === '`') {
+        return '<code>' + escapeHTML(part.slice(1, -1)) + '</code>';
+      }
+      return escapeHTML(part);
+    }).join('');
+  }
+
+  exam.questions.forEach(function (q, idx) {
+    const card = document.createElement('div');
+    card.className = 'question-card';
+    card.id = 'q-' + idx;
+
+    const isKB = q.category === 'knowledge-base';
+    const tagClass = isKB ? 'kb' : 'cs';
+    const tagText = isKB ? '知识库' : '通用 CS';
+    const subText = q.subcategory ? ' · ' + escapeHTML(q.subcategory) : '';
+
+    let optionsHTML = '';
+    q.options.forEach(function (opt, i) {
+      optionsHTML += ''
+        + '<li data-idx="' + i + '">'
+        +   '<input type="radio" name="q-' + idx + '" value="' + i + '" id="q-' + idx + '-opt-' + i + '">'
+        +   '<span class="option-letter">' + String.fromCharCode(65 + i) + '.</span>'
+        +   '<label class="option-text" for="q-' + idx + '-opt-' + i + '">' + renderInlineCode(opt) + '</label>'
+        +   '<span class="verdict" data-verdict-for="' + i + '"></span>'
+        + '</li>';
+    });
+
+    const explanationHTML = ''
+      + '<div class="explanation" id="exp-' + idx + '">'
+      +   '<div class="label">解析</div>'
+      +   '<div class="exp-body">' + renderInlineCode(q.explanation) + '</div>'
+      +   (q.source_ref ? '<span class="source-ref">来源:' + escapeHTML(q.source_ref) + '</span>' : '')
+      + '</div>';
+
+    card.innerHTML = ''
+      + '<div class="question-header">'
+      +   '<span class="tag ' + tagClass + '">' + tagText + '</span>'
+      +   '<span class="question-number">第 ' + (idx + 1) + ' 题</span>'
+      +   '<span>' + subText + '</span>'
+      + '</div>'
+      + '<div class="question-text">' + renderInlineCode(q.question) + '</div>'
+      + '<ul class="options">' + optionsHTML + '</ul>'
+      + explanationHTML;
+
+    root.appendChild(card);
+
+    card.querySelectorAll('.options li').forEach(function (li) {
+      li.addEventListener('click', function () {
+        if (submitted) return;
+        const input = li.querySelector('input[type=radio]');
+        if (!input) return;
+        input.checked = true;
+        userAnswers[idx] = parseInt(input.value, 10);
+        card.querySelectorAll('.options li').forEach(function (other) {
+          other.classList.remove('selected');
+        });
+        li.classList.add('selected');
+        updateProgress();
+      });
+    });
+  });
+
+  function updateProgress() {
+    const answered = userAnswers.filter(function (a) { return a !== null; }).length;
+    progressEl.textContent = '已作答 ' + answered + ' / ' + total;
+    submitBtn.disabled = answered !== total;
+  }
+
+  submitBtn.addEventListener('click', function () {
+    if (submitted) return;
+    submitted = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = '已提交';
+
+    let correctCount = 0;
+    let kbCorrect = 0, kbTotal = 0, csCorrect = 0, csTotal = 0;
+
+    exam.questions.forEach(function (q, idx) {
+      const card = document.getElementById('q-' + idx);
+      const userAns = userAnswers[idx];
+      const isCorrect = userAns === q.correct;
+      if (isCorrect) correctCount++;
+      if (q.category === 'knowledge-base') {
+        kbTotal++;
+        if (isCorrect) kbCorrect++;
+      } else {
+        csTotal++;
+        if (isCorrect) csCorrect++;
+      }
+
+      card.classList.add(isCorrect ? 'correct' : 'wrong');
+      card.querySelectorAll('.options li').forEach(function (li) {
+        const i = parseInt(li.getAttribute('data-idx'), 10);
+        const input = li.querySelector('input[type=radio]');
+        if (input) input.disabled = true;
+        li.classList.add('locked');
+        const verdict = li.querySelector('.verdict');
+        if (i === q.correct) {
+          li.classList.add('correct-option');
+          if (verdict) {
+            verdict.classList.add('correct');
+            verdict.textContent = '✓ 正确答案';
+          }
+        }
+        if (i === userAns && !isCorrect) {
+          li.classList.add('wrong-option');
+          if (verdict) {
+            verdict.classList.add('wrong');
+            verdict.textContent = '✗ 你的选择';
+          }
+        }
+      });
+
+      document.getElementById('exp-' + idx).classList.add('show');
+    });
+
+    resultScore.textContent = correctCount + ' / ' + total;
+    const ratio = correctCount / total;
+    if (ratio >= 0.8) resultScore.classList.add('high');
+    else if (ratio < 0.5) resultScore.classList.add('low');
+
+    const breakdownParts = [];
+    if (kbTotal > 0) breakdownParts.push('知识库 ' + kbCorrect + '/' + kbTotal);
+    if (csTotal > 0) breakdownParts.push('通用 CS ' + csCorrect + '/' + csTotal);
+    resultBreakdown.textContent = breakdownParts.join(' · ');
+
+    resultCard.classList.add('show');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+})();
+</script>
+</body>
+</html>
