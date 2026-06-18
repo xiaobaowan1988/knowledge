@@ -364,10 +364,10 @@
       "background": "关系型数据库早期用严格两阶段锁（S2PL）保证隔离性，但读写互斥导致并发极低。MVCC 被引入后，读操作读历史快照、不阻塞写，大幅提升并发——但标准 MVCC 只能消除「快照读」的幻读，当 SELECT…FOR UPDATE 等「当前读」需要加锁时，幻读风险仍然存在。InnoDB 在此基础上额外引入 next-key lock，在当前读路径上锁住索引间隙，使 REPEATABLE READ 级别下几乎无幻读，超越了 SQL 标准的要求。",
       "glossary": [
         {"term": "REPEATABLE READ", "def": "SQL 标准隔离级别之一，同一事务内多次读同一数据结果一致；标准允许幻读，但 InnoDB 通过加锁额外规避了它"},
-        {"term": "幻读 (Phantom Read)", "def": "同一事务内两次范围查询之间，其他事务插入了新行，导致第二次查询看到第一次没有的"幽灵"行"},
+        {"term": "幻读 (Phantom Read)", "def": "同一事务内两次范围查询之间，其他事务插入了新行，导致第二次查询看到第一次没有的\"幽灵\"行"},
         {"term": "next-key lock", "def": "InnoDB 特有的组合锁 = record lock（锁住具体行）+ gap lock（锁住行前的间隙），防止新行插入到锁范围内"},
         {"term": "record lock", "def": "锁住索引中具体某一行记录，阻止其他事务修改或删除该行"},
-        {"term": "gap lock", "def": "锁住两个索引值之间的"间隙"，阻止其他事务在此范围内插入新行，不锁已有行"},
+        {"term": "gap lock", "def": "锁住两个索引值之间的\"间隙\"，阻止其他事务在此范围内插入新行，不锁已有行"},
         {"term": "MVCC", "def": "Multi-Version Concurrency Control，多版本并发控制：读操作读历史版本快照，不与写操作互斥，提升并发度"},
         {"term": "快照读 (Snapshot Read)", "def": "普通 SELECT，读事务开始时的数据快照，不加任何锁"},
         {"term": "当前读 (Current Read)", "def": "读取最新版本数据并加锁，包括 SELECT…FOR UPDATE / INSERT / UPDATE / DELETE 触发的读"}
