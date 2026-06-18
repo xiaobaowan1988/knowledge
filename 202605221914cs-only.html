@@ -260,6 +260,30 @@
     white-space: pre;
   }
 
+  /* ── 背景介绍 ── */
+  .background-section {
+    display: none;
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: #f5f3ff;
+    border-left: 3px solid #7c3aed;
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+  }
+  .background-section.show { display: block; }
+  .background-section .label {
+    font-weight: 700;
+    margin-bottom: 6px;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: #5b21b6;
+    text-transform: uppercase;
+  }
+  .background-section .bg-text {
+    color: var(--text);
+    line-height: 1.65;
+  }
+
   .submit-bar {
     position: fixed;
     left: 16px;
@@ -337,6 +361,7 @@
       "correct": 0,
       "explanation": "SQL 标准的 `REPEATABLE READ` 允许幻读; InnoDB 通过 next-key lock 在当前读 (`SELECT ... FOR UPDATE` / `INSERT` 前检查) 上锁住间隙避免幻行插入。纯快照读路径靠 MVCC 避免幻读, 但当前读必须靠锁。",
       "source_ref": null,
+      "background": "关系型数据库早期用严格两阶段锁（S2PL）保证隔离性，但读写互斥导致并发极低。MVCC 被引入后，读操作读历史快照、不阻塞写，大幅提升并发——但标准 MVCC 只能消除「快照读」的幻读，当 SELECT…FOR UPDATE 等「当前读」需要加锁时，幻读风险仍然存在。InnoDB 在此基础上额外引入 next-key lock，在当前读路径上锁住索引间隙，使 REPEATABLE READ 级别下几乎无幻读，超越了 SQL 标准的要求。",
       "glossary": [
         {"term": "REPEATABLE READ", "def": "SQL 标准隔离级别之一，同一事务内多次读同一数据结果一致；标准允许幻读，但 InnoDB 通过加锁额外规避了它"},
         {"term": "幻读 (Phantom Read)", "def": "同一事务内两次范围查询之间，其他事务插入了新行，导致第二次查询看到第一次没有的"幽灵"行"},
@@ -383,6 +408,7 @@
       "correct": 1,
       "explanation": "LSM 把随机写转为顺序追加 (memtable → SSTable), 写吞吐显著高于 B+ 树的原地更新模型; 读路径需要查多层 SSTable, 通常依赖 bloom filter 减少无谓 I/O。",
       "source_ref": null,
+      "background": "B+ 树针对随机读优化，但在日志系统、时序数据库、NoSQL 等写密集场景中，频繁的随机 I/O 成为吞吐瓶颈。O'Neil 等人（1996）提出 LSM 树，核心思路是「先写内存，满了再顺序刷盘」，把随机写变成顺序追加，使 SSD/HDD 的写吞吐提升数倍——代价是读路径需要查多层文件，并引入后台 compaction 开销。RocksDB、Cassandra、LevelDB 等现代存储引擎都基于此模型。",
       "glossary": [
         {"term": "B+ 树", "def": "平衡多路搜索树，叶节点用链表串联，支持高效范围查询；写入需要原地随机 I/O，可能触发页分裂"},
         {"term": "LSM 树", "def": "Log-Structured Merge-Tree，先写内存缓冲(memtable)再顺序刷盘为 SSTable，把随机写转为顺序追加"},
@@ -425,6 +451,7 @@
       "correct": 2,
       "explanation": "CAP 的 C 是分布式系统层面的 linearizability (Gilbert & Lynch 2002 形式化); ACID 的 C 是单数据库内事务结束后业务不变量仍成立 (依赖应用 / 约束)。前者讨论网络分区下还能不能读到最新写, 后者讨论事务边界内业务规则不被破坏 — 两个层面完全无关。",
       "source_ref": null,
+      "background": "分布式系统兴起后，工程师发现传统单机 ACID 的「一致性」概念无法直接套用到多节点场景——网络分区发生时，无法同时保证「数据实时同步到所有副本」和「服务持续可用」。Gilbert & Lynch（2002）形式化了 CAP 定理，定义了一个全新的「一致性」概念（linearizability，线性一致性），与 ACID 的 C 同名却完全不同——前者是分布式协议层面的副本同步保证，后者是单库事务边界内的业务约束。两个概念的同名导致业界长期混淆，理解其本质差异是分布式系统设计的基础。",
       "glossary": [
         {"term": "CAP 定理", "def": "分布式系统中 Consistency（一致性）、Availability（可用性）、Partition tolerance（分区容忍）三者不可同时满足"},
         {"term": "Linearizability（线性一致性）", "def": "CAP 的 C：写入后任意客户端立即可读到最新值，所有操作好像在单一时间点原子发生；是最强的一致性模型"},
@@ -465,6 +492,7 @@
       "correct": 0,
       "explanation": "Lamport (1978) 单标量 + max(local, recv)+1 规则, 只保证「a→b 蕴含 ts(a)<ts(b)」, 反向不成立, 无法区分并发与因果。Vector clock 用 N 维向量, 通过偏序 (v ≤ v′ 当且仅当所有维都 ≤) 精确捕获 happens-before, 代价是 O(N) 空间。Lamport / vector 都不需要物理时钟同步, 完全逻辑时钟。",
       "source_ref": null,
+      "background": "分布式系统中没有全局时钟，各节点的物理时钟存在漂移，无法可靠地用「时间戳大小」判断事件发生先后。Lamport（1978）提出逻辑时钟，用标量整数给事件编号，解决了「如何建立全序」的问题——但只能告诉你「谁先谁后」，无法区分「真的有因果关系」和「只是时间戳碰巧更小」。为了精确捕获 happens-before（因果关系），Fidge 和 Mattern（1988）独立提出了向量时钟，用 N 维向量取代标量，牺牲 O(N) 空间换来对「并发」与「因果」的精确区分。向量时钟广泛用于 DynamoDB、Git、分布式数据库的冲突检测。",
       "glossary": [
         {"term": "Lamport timestamp", "def": "逻辑时钟，标量整数；更新规则：ts = max(local_ts, received_ts) + 1；满足「a→b ⇒ ts(a)<ts(b)」，但反向不成立"},
         {"term": "Vector clock", "def": "向量时钟，N 维整数向量（N=进程数）；能精确判定事件因果关系：a→b、b→a、或并发(‖)"},
@@ -509,6 +537,7 @@
       "correct": 1,
       "explanation": "fast retransmit 解决「何时立即重传」; fast recovery 解决「重传后窗口如何恢复」 — Reno 系是减半 + AIMD, 避免回到 slow start。",
       "source_ref": null,
+      "background": "TCP 最初的拥塞控制（Tahoe，1988）在检测到任何丢包时都将 cwnd 重置为 1，重新经历慢启动。但单个包丢失往往只是网络抖动，而非真正的严重拥塞——对这种轻微信号施以「重启慢启动」的重罚，导致带宽利用率急剧下降。Jacobson（1990）在 TCP Reno 中引入 fast retransmit（三个重复 ACK 即重传，不等超时）和 fast recovery（重传后 cwnd 减半而非归 1），对单包丢失采用更温和的处理，大幅减少因偶发丢包带来的吞吐抖动，成为互联网骨干网流量控制的基础。",
       "glossary": [
         {"term": "cwnd (Congestion Window)", "def": "拥塞窗口，发送方维护的变量，控制「网络在途中最多允许多少字节未被确认」，是 TCP 拥塞控制的核心"},
         {"term": "ssthresh", "def": "Slow Start Threshold，慢启动阈值；cwnd < ssthresh 时指数增长（slow start），cwnd ≥ ssthresh 时线性增长（congestion avoidance）"},
@@ -550,6 +579,7 @@
       "correct": 3,
       "explanation": "gRPC 4 种模式都建立在 HTTP/2 单 stream 上, request / response 都是同一 stream 内的 framed message 序列。Broadcast 需要服务端维护连接表 + 显式 fan-out, 不是 RPC 原语;Web 端常用 SSE / WebSocket 实现 server-push 广播。",
       "source_ref": null,
+      "background": "传统 REST/HTTP 1.1 只支持「一个请求对应一个响应」的模型，无法高效处理流式场景（实时日志推送、大文件分块传输、双向实时通信）。gRPC 基于 HTTP/2 的多路复用和双向流特性，提供了四种通信模式，满足不同流式需求——同时保持 Protobuf 的类型安全和高效序列化。理解「gRPC 的 stream 是一对一信道」这一本质，有助于正确评估何时需要在应用层叠加 fan-out/pub-sub 来实现真正的广播语义。",
       "glossary": [
         {"term": "gRPC", "def": "Google 开发的高性能 RPC 框架，基于 HTTP/2 传输和 Protobuf 序列化，支持多语言"},
         {"term": "HTTP/2", "def": "HTTP 协议版本2，支持多路复用（单连接并发多个 stream）、头部压缩（HPACK）、二进制帧"},
@@ -592,6 +622,7 @@
       "correct": 1,
       "explanation": "RCU 把代价从读者转移给写者: 读者侧 `rcu_read_lock()` 仅禁抢占, 几乎零开销; 写者复制 + 原子指针 swap + `synchronize_rcu()` 等所有读者退出后回收旧版本。适用于读多写少且读路径延迟敏感的场景 (路由表、dcache、IDR)。Grace period 由 quiescent state 检测实现, 不是固定时长。",
       "source_ref": null,
+      "background": "Linux 内核中许多关键数据结构（路由表、目录缓存 dcache、进程 ID 表 IDR）呈现「大量并发读、极少写」的访问模式。传统 spinlock/mutex 要求读者也要竞争锁，在多核系统上造成严重的锁争用和 cache line bouncing。RCU（Paul McKenney 于 1990 年代提出并整合进 Linux 2.5）通过「读者零开销、代价全压写者」的设计，彻底消除读路径的锁竞争，成为 Linux 内核使用最广泛的同步原语之一，在 64 核服务器上可将读密集路径的吞吐提升数十倍。",
       "glossary": [
         {"term": "RCU (Read-Copy-Update)", "def": "Linux 内核同步原语：读者完全无锁，写者通过「复制→修改→原子替换指针→等待宽限期→回收旧版本」来实现并发安全"},
         {"term": "grace period (宽限期)", "def": "RCU 中写者等待的时间窗口：确保所有「在指针替换之前就开始的读临界区」全部结束，之后旧版本才能安全回收"},
@@ -632,6 +663,7 @@
       "correct": 3,
       "explanation": "乐观锁假设冲突罕见 — 读时不锁, 写时检查版本号 / CAS, 失败重试。高冲突下重试浪费 CPU 且可能活锁。悲观锁阻塞等待, 在高冲突下吞吐更高、延迟更稳定, 代价是引入死锁可能 — 需要锁超时 / 死锁检测。Web 类短事务多用乐观锁; 金融批处理类长事务多用悲观锁。",
       "source_ref": null,
+      "background": "数据库事务需要防止多个并发操作修改同一数据导致不一致。悲观锁（SELECT…FOR UPDATE）从「假设冲突必然发生」出发，先加锁再操作，简单但在低冲突场景下锁等待浪费严重。乐观锁（CAS/版本号）从「假设冲突很少」出发，不加锁直接操作，提交时验证——在 Web 高并发、读多写少的场景下吞吐更高。两种模型各有适用场景，「默认选乐观锁」或「默认选悲观锁」都是反模式；正确做法是基于实测冲突率做决策。",
       "glossary": [
         {"term": "乐观锁 (Optimistic Lock)", "def": "假设冲突很少发生：读时不加锁，写时通过版本号或 CAS 验证「自读取以来数据未被修改」，失败则重试"},
         {"term": "悲观锁 (Pessimistic Lock)", "def": "假设会有冲突：读时就加锁（SELECT…FOR UPDATE），其他事务必须等待锁释放，保守但避免重试"},
@@ -673,6 +705,7 @@
       "correct": 0,
       "explanation": "简单 `% N` 在 N 变化时几乎所有 key 重映射, 不可扩缩。一致性哈希让 key 在环上的位置只受相邻节点影响, 加节点只迁移一段弧。Hot key / 均匀分布仍需虚拟节点配合。",
       "source_ref": null,
+      "background": "分布式缓存（Memcached）和分布式存储系统需要将数据分散到多个节点，并支持弹性扩缩容。简单取模分片（hash(key)%N）在节点数 N 变化时会导致几乎所有 key 重新映射，引发大规模缓存失效（缓存雪崩），使得动态扩缩容几乎不可用。Karger 等人（1997，MIT）提出一致性哈希，将节点增减时的 key 迁移量从「O(K)」降低到「期望 O(K/N)」，让弹性伸缩成为常规运维操作。Dynamo、Cassandra、Redis Cluster 等都采用此思想。",
       "glossary": [
         {"term": "一致性哈希 (Consistent Hashing)", "def": "将节点和 key 都映射到同一哈希环上，key 归属顺时针方向最近的节点；节点增减时只影响相邻的一段 key"},
         {"term": "哈希环 (Hash Ring)", "def": "将哈希值空间 [0, 2^32) 首尾相连形成的逻辑环形结构，节点和 key 都映射到环上的某个位置"},
@@ -713,6 +746,7 @@
       "correct": 1,
       "explanation": "堆中始终维持 ≤ N 个元素, K 个元素各做一次 push + 一次 pop, 每次 O(log N), 总 O(K log N)。比两两归并的 O(K log N) 等价但常数更低。",
       "source_ref": null,
+      "background": "外部排序（磁盘上超出内存的大文件排序）和分布式计算（MapReduce Reduce 阶段合并多个 sorted run）都需要同时归并大量有序序列。朴素的逐对比较每步需要检查所有 N 个序列的当前最小值，代价 O(N) 每步，总计 O(K×N)。用最小堆维护「各序列当前最小值」，将每步比较代价从 O(N) 降到 O(log N)，是一个以 O(N) 空间换时间的经典优化，广泛用于数据库外排、搜索引擎倒排索引合并等场景。",
       "glossary": [
         {"term": "最小堆 (Min-Heap)", "def": "父节点总是小于等于子节点的完全二叉树；堆顶始终是最小元素；插入/删除均为 O(log n)"},
         {"term": "K 路归并", "def": "同时合并 K 个有序序列的算法；最小堆解法：将各序列当前最小元素放入堆，每次取堆顶"},
@@ -747,6 +781,7 @@
       "correct": 0,
       "explanation": "算法 R: 前 K 个元素直接入池; 第 i (i > K) 个元素以概率 K/i 替换池中随机一个旧元素。归纳证明: 任一已扫元素最终被选概率恒为 K/N。无序、无比较, 单遍流式, 是分布式日志采样 / 大数据近似计算的标配。",
       "source_ref": null,
+      "background": "大数据流分析（日志采样、A/B 实验分流、实时统计）中，数据流的总长度往往未知，或远超内存无法完整存储。两遍算法（先扫一遍得到总数 N，再按概率抽取）无法用于真正的流式场景。Vitter（1985）提出蓄水池抽样，用单遍 + O(K) 内存即可保证每个元素被选中的概率恰好为 K/N——无需提前知道 N，也无需元素具有可比性。这使它成为 Kafka 消费端采样、Hadoop 流处理、实时监控系统的标准算法。",
       "glossary": [
         {"term": "蓄水池抽样 (Reservoir Sampling)", "def": "从长度事先未知的流中均匀随机抽取 K 个样本的单遍算法，保证每个元素被选中的概率均等"},
         {"term": "流式算法 (Streaming Algorithm)", "def": "只能单遍扫描数据、使用亚线性内存的算法；蓄水池抽样是经典例子：O(K) 内存，O(N) 时间，O(1) 每步"},
@@ -782,6 +817,7 @@
       "correct": 1,
       "explanation": "B 是错误描述: 多进程只读 `mmap` 同一文件时**共享同一份物理页** (这正是 mmap 节省内存的来源)。A / C / D 都是真实优势。`mmap` 的真正代价在于 page fault 不可预测 (大文件随机访问可能产生大量 major fault)、对小文件 / 一次性短读反而比 `read()` 慢 (建立映射的开销摊不开)、错误处理不友好 (SIGBUS 而非 errno)。",
       "source_ref": null,
+      "background": "传统 read() 系统调用需要将数据从内核 page cache 拷贝到用户态缓冲区，对数据库引擎、日志分析等需要频繁访问大文件的程序，这次拷贝的 CPU 和内存带宽开销不可忽视。mmap 利用虚拟内存机制，将文件内容直接映射到进程地址空间，省去内核到用户的数据拷贝（零拷贝），并允许多进程共享同一份物理页（节省内存）。这道题考查的是对 mmap「共享而非独占」这一核心特性的理解，常被误解为「每进程独占一份」。",
       "glossary": [
         {"term": "mmap", "def": "系统调用，将文件或设备的一段内容直接映射到进程虚拟地址空间；访问地址即访问文件，无需 read/write 系统调用"},
         {"term": "page cache", "def": "内核维护的文件内容缓存；无论用 read() 还是 mmap，文件数据都会进入 page cache，多进程共享"},
@@ -823,6 +859,7 @@
       "correct": 0,
       "explanation": "JWT 把验证状态推给客户端, 服务器靠签名验证即可放行 ⇒ 无状态、易水平扩展; 代价是签发后无法立即作废, 必须短 TTL + refresh 或维护 revocation list 缓解。HS256 (对称) 与 RS256 / EdDSA (非对称) 都是合法签名算法。",
       "source_ref": null,
+      "background": "单体服务时代，session cookie（服务端存储会话状态）工作良好。微服务和水平扩展架构兴起后，多个服务实例需要共享 session 存储（Redis），每次请求都产生额外的网络往返和存储依赖，成为扩展瓶颈。JWT（JSON Web Token，RFC 7519）通过将身份信息编码在令牌本身并用签名保证完整性，使服务器只需验签即可授权，无需查询中央存储——天然支持无状态水平扩展。代价是签发后无法立即主动失效，这是 JWT 相对 session cookie 最核心的工程权衡。",
       "glossary": [
         {"term": "JWT (JSON Web Token)", "def": "自包含令牌，格式为 Header.Payload.Signature（Base64 编码）；服务器用签名验证，不需要查数据库"},
         {"term": "session cookie", "def": "服务器存储 session 状态（用户信息、权限等），客户端只持有 session ID；服务器需要查存储来验证"},
@@ -864,6 +901,7 @@
       "correct": 3,
       "explanation": "Martin Kleppmann 《DDIA》ch8 详述: GC pause / 进程 stall 长度无界 (尤其 JVM 大堆), 单靠租约时长无法兜底。Fencing token 把「时间正确性」转化为「序号单调性」, storage 侧做一次比较即可拒绝过期请求。这也是 Chubby / etcd / ZooKeeper 客户端文档强调「lease + fencing token 一起用」的根本原因。",
       "source_ref": null,
+      "background": "分布式系统中的 leader 选举和租约机制依赖一个隐含假设：「进程在租约期内不会长时间消失」。然而 JVM GC pause、虚拟机实时迁移、操作系统 swap、内核 bug 等都可能使进程冻结数秒乃至数十秒后「复活」，此时租约已被转交给新 leader，但旧 leader 对此一无所知——形成「僵尸 leader」问题。单纯延长租约时长无法根本解决（stall 时长无界）。Kleppmann 在《DDIA》中形式化了此问题，并提出用单调递增的 fencing token 将「时间正确性」转化为可在 storage 侧用一次整数比较验证的「序号单调性」。",
       "glossary": [
         {"term": "lease (租约)", "def": "Coordinator 授予 leader 一定时间内独占操作权的机制；到期后 coordinator 可将租约转给新 leader"},
         {"term": "GC pause", "def": "JVM 等运行时的垃圾回收停顿，期间进程完全冻结；大堆环境下可达数秒甚至数十秒，无法预测"},
@@ -904,6 +942,7 @@
       "correct": 2,
       "explanation": "at-least-once 保证不丢, 但允许重复 (消费者 commit 前崩溃或网络抖动 ⇒ 重投递)。把「恰好一次效果」推回应用层 — 要么副作用天然幂等, 要么基于 message-id / 业务键去重。同步 commit 只是一种实现细节, 不是 at-least-once 的定义。",
       "source_ref": null,
+      "background": "分布式消息系统面临「可靠投递」与「实现复杂度」的根本权衡。at-most-once（先 commit 再处理）实现简单但可能丢消息；exactly-once（恰好一次）需要生产者幂等 + 消费者事务，实现复杂且有性能损耗。at-least-once（先处理再 commit）是最常见的工程折衷：Broker 保证消息不丢，允许重复投递，将「去重」职责下推给消费者——消费者可以用幂等操作或去重表来达到「恰好一次效果」。Kafka、RabbitMQ、RocketMQ 等主流消息系统的默认语义均为 at-least-once。",
       "glossary": [
         {"term": "at-least-once", "def": "消息投递语义：保证每条消息至少被投递一次，可能重复，但不会丢失；消费者需自行处理重复"},
         {"term": "at-most-once", "def": "消息投递语义：每条消息最多投递一次，可能丢失但不会重复；先 commit 再处理，若处理期间崩溃则消息丢失"},
@@ -1043,12 +1082,21 @@
         + '</div>';
     }
 
+    let backgroundHTML = '';
+    if (q.background) {
+      backgroundHTML = '<div class="background-section" id="bg-' + idx + '">'
+        + '<div class="label">背景介绍</div>'
+        + '<div class="bg-text">' + escapeHTML(q.background) + '</div>'
+        + '</div>';
+    }
+
     const explanationHTML = ''
       + '<div class="explanation" id="exp-' + idx + '">'
       +   '<div class="label">解析</div>'
       +   '<div class="exp-body">' + renderInlineCode(q.explanation) + '</div>'
       +   (q.source_ref ? '<span class="source-ref">来源:' + escapeHTML(q.source_ref) + '</span>' : '')
       + '</div>'
+      + backgroundHTML
       + glossaryHTML
       + stepsHTML;
 
@@ -1132,6 +1180,9 @@
       });
 
       document.getElementById('exp-' + idx).classList.add('show');
+
+      const bgEl = document.getElementById('bg-' + idx);
+      if (bgEl) bgEl.classList.add('show');
 
       const gloEl = document.getElementById('glo-' + idx);
       if (gloEl) gloEl.classList.add('show');
