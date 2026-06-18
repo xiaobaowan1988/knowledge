@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>通用 CS 练习</title>
+<style>
+  :root {
+    --bg: #f7f7f8;
+    --card: #ffffff;
+    --border: #e4e4e7;
+    --text: #18181b;
+    --muted: #71717a;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --correct: #16a34a;
+    --correct-bg: #dcfce7;
+    --correct-border: #86efac;
+    --wrong: #dc2626;
+    --wrong-bg: #fee2e2;
+    --wrong-border: #fca5a5;
+    --kb-tag: #2563eb;
+    --cs-tag: #9333ea;
+    --explanation-bg: #fafafa;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    line-height: 1.6;
+    padding: 24px 16px 120px;
+  }
+  .container { max-width: 820px; margin: 0 auto; }
+  header h1 { font-size: 22px; margin: 0 0 4px; }
+  header .meta { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+
+  .result-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 22px;
+    margin-bottom: 24px;
+    display: none;
+  }
+  .result-card.show { display: block; }
+  .result-card h2 { margin: 0 0 6px; font-size: 18px; }
+  .result-card .score { font-size: 36px; font-weight: 700; color: var(--primary); line-height: 1.1; margin: 6px 0; }
+  .result-card .score.low { color: var(--wrong); }
+  .result-card .score.high { color: var(--correct); }
+  .result-card .breakdown { font-size: 13px; color: var(--muted); }
+
+  .question-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .question-card.correct { border-color: var(--correct-border); }
+  .question-card.wrong { border-color: var(--wrong-border); background: #fff7f7; }
+
+  .question-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .tag {
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+    letter-spacing: 0.02em;
+  }
+  .tag.kb { background: var(--kb-tag); }
+  .tag.cs { background: var(--cs-tag); }
+  .question-number { font-weight: 600; color: var(--text); }
+  .question-text {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    word-break: break-word;
+  }
+  .question-text code,
+  .options code,
+  .explanation code {
+    background: #f4f4f5;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.92em;
+  }
+
+  .options { list-style: none; padding: 0; margin: 0; }
+  .options li {
+    padding: 10px 14px;
+    margin: 6px 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    transition: background 0.1s, border-color 0.1s;
+  }
+  .options li:hover:not(.locked) { background: #f4f4f5; }
+  .options li.selected { border-color: var(--primary); background: #eff6ff; }
+  .options li.locked { cursor: default; }
+  .options li.correct-option { border-color: var(--correct); background: var(--correct-bg); }
+  .options li.wrong-option { border-color: var(--wrong); background: var(--wrong-bg); }
+  .options li.wrong-option .option-text { text-decoration: line-through; }
+  .options input[type=radio] { margin-top: 4px; }
+  .option-letter { font-weight: 600; color: var(--muted); min-width: 18px; }
+  .options li.correct-option .option-letter { color: var(--correct); }
+  .options li.wrong-option .option-letter { color: var(--wrong); }
+  .option-text { flex: 1; word-break: break-word; }
+  .verdict {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .verdict.correct { color: var(--correct); }
+  .verdict.wrong { color: var(--wrong); }
+
+  .explanation {
+    display: none;
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: var(--explanation-bg);
+    border-left: 3px solid var(--primary);
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+  }
+  .explanation.show { display: block; }
+  .explanation .label {
+    font-weight: 700;
+    margin-bottom: 4px;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .explanation .source-ref {
+    display: block;
+    margin-top: 8px;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 11.5px;
+    color: var(--muted);
+    word-break: break-all;
+  }
+
+  /* ── 名词解释 ── */
+  .glossary-section {
+    display: none;
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: #fffbeb;
+    border-left: 3px solid #f59e0b;
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+  }
+  .glossary-section.show { display: block; }
+  .glossary-section .label {
+    font-weight: 700;
+    margin-bottom: 8px;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: #92400e;
+    text-transform: uppercase;
+  }
+  .glossary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 8px;
+  }
+  .glossary-item {
+    background: #fff;
+    border: 1px solid #fde68a;
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+  .glossary-item .term {
+    font-weight: 700;
+    color: #b45309;
+    font-size: 12.5px;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  }
+  .glossary-item .term-def {
+    color: var(--text);
+    font-size: 12px;
+    margin-top: 2px;
+    line-height: 1.5;
+  }
+
+  /* ── 逐步解析 ── */
+  .steps-section {
+    display: none;
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: #f0fdf4;
+    border-left: 3px solid #22c55e;
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+  }
+  .steps-section.show { display: block; }
+  .steps-section .label {
+    font-weight: 700;
+    margin-bottom: 10px;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: #166534;
+    text-transform: uppercase;
+  }
+  .step-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .step-item:last-child { margin-bottom: 0; }
+  .step-number {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    background: #22c55e;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 1px;
+  }
+  .step-body { flex: 1; }
+  .step-text { color: var(--text); line-height: 1.55; }
+  .step-text code {
+    background: #dcfce7;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.92em;
+    color: #166534;
+  }
+  .diagram {
+    margin-top: 7px;
+    background: #18181b;
+    color: #86efac;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 11.5px;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .submit-bar {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    max-width: 820px;
+    margin: 0 auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  }
+  .progress { font-size: 13px; color: var(--muted); }
+  button.submit {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 9px 22px;
+    font-size: 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  button.submit:disabled { opacity: 0.45; cursor: not-allowed; }
+  button.submit:hover:not(:disabled) { background: var(--primary-hover); }
+
+  @media (max-width: 600px) {
+    body { padding: 16px 12px 110px; }
+    .question-card { padding: 14px 14px; }
+    header h1 { font-size: 18px; }
+    .glossary-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1 id="exam-title">通用 CS 练习</h1>
+    <div class="meta" id="exam-meta"></div>
+  </header>
+
+  <div class="result-card" id="result-card">
+    <h2>测验结果</h2>
+    <div class="score" id="result-score">— / —</div>
+    <div class="breakdown" id="result-breakdown"></div>
+  </div>
+
+  <div id="questions-root"></div>
+</div>
+
+<div class="submit-bar">
+  <div class="progress" id="progress">已作答 0 / 0</div>
+  <button class="submit" id="submit-btn" disabled>提交答案</button>
+</div>
+
+<script id="exam-data" type="application/json">{
+  "title": "通用 CS 练习 · 广度采样",
+  "generated_at": "2026-05-22T19:14:00+09:00",
+  "topic": "breadth-sample-cs-only",
+  "questions": [
+    {
+      "category": "general-cs",
+      "subcategory": "databases",
+      "question": "MySQL InnoDB 在 `REPEATABLE READ` 隔离级别下避免幻读的核心机制是?",
+      "options": [
+        "使用 next-key lock (record lock + gap lock) 在范围扫描的当前读路径上锁住间隙",
+        "MVCC 快照读已可消除幻读, 无需任何锁",
+        "完全遵循 SQL 标准, `REPEATABLE READ` 必然出现幻读",
+        "自动提升到 `SERIALIZABLE` 级别"
+      ],
+      "correct": 0,
+      "explanation": "SQL 标准的 `REPEATABLE READ` 允许幻读; InnoDB 通过 next-key lock 在当前读 (`SELECT ... FOR UPDATE` / `INSERT` 前检查) 上锁住间隙避免幻行插入。纯快照读路径靠 MVCC 避免幻读, 但当前读必须靠锁。",
+      "source_ref": null,
+      "glossary": [
+        {"term": "REPEATABLE READ", "def": "SQL 标准隔离级别之一，同一事务内多次读同一数据结果一致；标准允许幻读，但 InnoDB 通过加锁额外规避了它"},
+        {"term": "幻读 (Phantom Read)", "def": "同一事务内两次范围查询之间，其他事务插入了新行，导致第二次查询看到第一次没有的"幽灵"行"},
+        {"term": "next-key lock", "def": "InnoDB 特有的组合锁 = record lock（锁住具体行）+ gap lock（锁住行前的间隙），防止新行插入到锁范围内"},
+        {"term": "record lock", "def": "锁住索引中具体某一行记录，阻止其他事务修改或删除该行"},
+        {"term": "gap lock", "def": "锁住两个索引值之间的"间隙"，阻止其他事务在此范围内插入新行，不锁已有行"},
+        {"term": "MVCC", "def": "Multi-Version Concurrency Control，多版本并发控制：读操作读历史版本快照，不与写操作互斥，提升并发度"},
+        {"term": "快照读 (Snapshot Read)", "def": "普通 SELECT，读事务开始时的数据快照，不加任何锁"},
+        {"term": "当前读 (Current Read)", "def": "读取最新版本数据并加锁，包括 SELECT…FOR UPDATE / INSERT / UPDATE / DELETE 触发的读"}
+      ],
+      "steps": [
+        {
+          "text": "先理解「幻读」是什么 — 两次范围查询之间，有新行被插入进来",
+          "diagram": "事务 A                        事务 B\nBEGIN;\nSELECT * WHERE age > 20;\n→ 返回 {Alice(21), Bob(25)}\n                              INSERT INTO t VALUES('Charlie', 22);\n                              COMMIT;\nSELECT * WHERE age > 20;\n→ 返回 {Alice, Bob, Charlie}  ← 幻行！"
+        },
+        {
+          "text": "**快照读路径**（普通 SELECT）靠 MVCC 避免幻读 — 整个事务读同一个历史快照版本，永远看不到其他事务新插入的行",
+          "diagram": "事务 A 的快照时间点: T=0\n\n快照版本: {Alice, Bob}    (T=0 时的数据)\n\n事务 B 在 T=1 插入 Charlie → 写入新版本\n\n事务 A 再次 SELECT → 仍读 T=0 的快照 → 不见 Charlie ✓"
+        },
+        {
+          "text": "**当前读路径**（SELECT…FOR UPDATE / INSERT 前置检查）必须读最新数据，不能用快照。若只加 record lock 而不加 gap lock，其他事务仍可在间隙插入新行",
+          "diagram": "只有 record lock 的情况:\n\n  已有行: Alice(21) ─lock─  Bob(25) ─lock─\n  间隙:  (21, 25) 未锁\n\n  事务 B: INSERT age=22 → 落在 (21,25) 间隙 → 成功！→ 幻读"
+        },
+        {
+          "text": "InnoDB 解法：next-key lock = record lock + gap lock，将间隙一起锁住",
+          "diagram": "next-key lock 覆盖范围:\n\n  (-∞, 21]  锁  →  (21, 25]  锁  →  (25, +∞)  锁\n\n  事务 B: INSERT age=22\n  → 命中 gap lock (21, 25)\n  → 被阻塞，直到事务 A 提交 / 回滚\n\n  → 幻读被彻底阻止 ✓"
+        },
+        {
+          "text": "总结：InnoDB 的 REPEATABLE READ 用「MVCC 处理快照读 + next-key lock 处理当前读」双管齐下，超越 SQL 标准，实际上防止了两种路径的幻读",
+          "diagram": "读路径            机制              幻读风险\n─────────────────────────────────────────\n快照读 (普通SELECT) MVCC 历史版本      无\n当前读 (FOR UPDATE) next-key lock      无（InnoDB 额外保证）\n─────────────────────────────────────────\nSQL 标准 RR 仅保证快照读，InnoDB 做了增强"
+        }
+      ]
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "databases",
+      "question": "关于 B+ 树与 LSM 树在写密集场景下的权衡, 以下哪项最准确?",
+      "options": [
+        "LSM 树写入立即落盘到最终位置, 因此写延迟比 B+ 树低",
+        "B+ 树写入需要原地更新 + 可能页分裂, 顺序写吞吐通常低于 LSM 树; 代价是 LSM 读放大, 需 bloom filter 辅助",
+        "LSM 树读路径稳定 O(log N), 不需要 bloom filter",
+        "B+ 树本质上比 LSM 树更适合写密集场景"
+      ],
+      "correct": 1,
+      "explanation": "LSM 把随机写转为顺序追加 (memtable → SSTable), 写吞吐显著高于 B+ 树的原地更新模型; 读路径需要查多层 SSTable, 通常依赖 bloom filter 减少无谓 I/O。",
+      "source_ref": null,
+      "glossary": [
+        {"term": "B+ 树", "def": "平衡多路搜索树，叶节点用链表串联，支持高效范围查询；写入需要原地随机 I/O，可能触发页分裂"},
+        {"term": "LSM 树", "def": "Log-Structured Merge-Tree，先写内存缓冲(memtable)再顺序刷盘为 SSTable，把随机写转为顺序追加"},
+        {"term": "memtable", "def": "LSM 树的内存写缓冲结构（通常是跳表或红黑树），写入先到这里，满了再刷盘"},
+        {"term": "SSTable", "def": "Sorted String Table，不可变的有序键值文件，memtable 刷盘后的产物"},
+        {"term": "写放大 (Write Amplification)", "def": "一次逻辑写触发多次物理写；B+ 树因页分裂、LSM 因 compaction 都存在写放大"},
+        {"term": "读放大 (Read Amplification)", "def": "一次逻辑读需要查多个物理位置；LSM 需查多层 SSTable，读放大较 B+ 树高"},
+        {"term": "Bloom filter", "def": "概率型数据结构，O(1) 判断「一个 key 绝对不在某 SSTable 中」，减少 LSM 读路径的无谓磁盘 I/O"},
+        {"term": "Compaction", "def": "LSM 后台将多层 SSTable 合并排序，减少层数、清理旧版本，降低读放大，但带来额外写 I/O"}
+      ],
+      "steps": [
+        {
+          "text": "B+ 树的写入路径 — 随机 I/O 是瓶颈",
+          "diagram": "写入 key = 42\n  ↓\n从根节点向下找到叶节点（随机读 I/O）\n  ↓\n在叶节点原地修改（随机写 I/O）\n  ↓\n若叶节点已满 → 页分裂（又产生多次随机写）\n  ↓\nWAL 日志（顺序写）"
+        },
+        {
+          "text": "LSM 树的写入路径 — 全程顺序写",
+          "diagram": "写入 key = 42\n  ↓\n追加到 WAL（顺序写 ✓）\n  ↓\n插入 memtable（纯内存，极快）\n  ↓\n[memtable 满] 顺序刷盘为 L0 SSTable（顺序写 ✓）\n  ↓\n后台 compaction: L0 → L1 → L2 … （顺序合并）"
+        },
+        {
+          "text": "读路径对比 — LSM 的读放大代价",
+          "diagram": "B+ 树读:   根 → 中间节点 → 叶节点   O(log N)，路径唯一\n\nLSM 读:    memtable → L0(多文件) → L1 → L2 → …\n           最坏需查所有层！\n\nBloom filter 的作用:\n  查询 key=42 时，先查每层的 bloom filter\n  → 若 filter 说「不存在」→ 直接跳过该 SSTable（节省 I/O）\n  → 若 filter 说「可能存在」→ 才真正读取"
+        },
+        {
+          "text": "结论对比",
+          "diagram": "场景          B+ 树              LSM 树\n──────────────────────────────────────────────\n写密集        慢（随机 I/O）      快（顺序追加）✓\n点查读        快（O(log N)）✓     较慢（多层查）\n范围查        快（叶链表）✓       慢（需合并多文件）\n空间放大      低                  较高（多版本残留）\n──────────────────────────────────────────────\n代表产品: MySQL InnoDB(B+) vs RocksDB/LevelDB(LSM)"
+        }
+      ]
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "distributed-systems",
+      "question": "关于 CAP 定理中的「C」(Consistency) 与 ACID 的「C」, 以下哪项最准确?",
+      "options": [
+        "二者完全等价 (都指业务不变量保持)",
+        "CAP 的 C 指 BASE 模型中的「Basically Available」",
+        "CAP 的 C 等价于 linearizability — 单对象的强一致 / 实时序保证; ACID 的 C 是跨表 / 跨行的业务不变量 (如外键 / check 约束); 同名异义",
+        "CAP 的 C 指 eventual consistency, 最终一致即满足"
+      ],
+      "correct": 2,
+      "explanation": "CAP 的 C 是分布式系统层面的 linearizability (Gilbert & Lynch 2002 形式化); ACID 的 C 是单数据库内事务结束后业务不变量仍成立 (依赖应用 / 约束)。前者讨论网络分区下还能不能读到最新写, 后者讨论事务边界内业务规则不被破坏 — 两个层面完全无关。",
+      "source_ref": null,
+      "glossary": [
+        {"term": "CAP 定理", "def": "分布式系统中 Consistency（一致性）、Availability（可用性）、Partition tolerance（分区容忍）三者不可同时满足"},
+        {"term": "Linearizability（线性一致性）", "def": "CAP 的 C：写入后任意客户端立即可读到最新值，所有操作好像在单一时间点原子发生；是最强的一致性模型"},
+        {"term": "ACID", "def": "数据库事务的四个属性：Atomicity（原子性）、Consistency（一致性）、Isolation（隔离性）、Durability（持久性）"},
+        {"term": "业务不变量", "def": "ACID 中的 C：事务结束后业务规则仍成立，如「账户余额不为负」「订单总价=各项之和」，由应用逻辑+数据库约束共同保证"},
+        {"term": "BASE", "def": "Basically Available, Soft state, Eventually consistent；选择 AP 的分布式系统的设计哲学，与 ACID 相对"},
+        {"term": "Eventual Consistency（最终一致性）", "def": "分布式系统中各副本在无新写入的情况下最终会收敛到相同值；比 linearizability 弱得多"}
+      ],
+      "steps": [
+        {
+          "text": "CAP 的 C = Linearizability — 这是一个「分布式多副本」层面的问题",
+          "diagram": "分布式系统: Node1(主) ─── Node2(副本)\n              ↑\n         网络分区发生\n              ↓\n客户端A 写: x = 1  →  Node1 记录了\n客户端B 读: x = ?  →  Node2 还没同步到\n\nLinearizability 要求: 客户端B 必须读到 x=1\n（不能返回旧值，读写必须像在一个原子时间点发生）"
+        },
+        {
+          "text": "ACID 的 C = 业务不变量 — 这是一个「单数据库事务边界」层面的问题",
+          "diagram": "转账事务（单数据库）:\nBEGIN;\n  UPDATE account SET balance = balance - 100 WHERE id = 1;\n  UPDATE account SET balance = balance + 100 WHERE id = 2;\nCOMMIT;\n\n不变量: balance_A + balance_B 总和不变\n这由应用逻辑 + CHECK 约束 + 数据库的原子性共同保证\n与「多节点间是否同步」完全无关"
+        },
+        {
+          "text": "两个「C」的本质差异对比",
+          "diagram": "维度          CAP 的 C                  ACID 的 C\n──────────────────────────────────────────────────\n讨论层面      分布式多节点之间            单数据库事务内部\n正式定义      Linearizability             业务不变量（应用定义）\n谁来保证      分布式协议（Paxos/Raft）    应用逻辑 + DB 约束\n失败代价      AP vs CP 取舍              事务回滚\n代表场景      副本读写时序一致性          外键/余额约束不被破坏\n──────────────────────────────────────────────────\n结论: 同一个字母「C」，完全不同含义，不可混用！"
+        },
+        {
+          "text": "常见混淆场景 — 为什么容易搞混",
+          "diagram": "错误理解: \"数据库有 ACID，所以满足 CAP 的 C？\"\n\n实际上:\n  单机 MySQL（ACID）在网络分区时可以直接拒绝所有请求\n  → 不需要面对 CAP 的 C vs A 取舍\n\nCAP 只适用于分布式系统（有网络分区的可能）\nACID 描述的是单节点事务语义\n\n它们在不同抽象层次上，无法直接比较"
+        }
+      ]
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "distributed-systems",
+      "question": "关于 Lamport timestamp 与 vector clock 在并发事件因果关系判定上的差别, 以下哪项最准确?",
+      "options": [
+        "Lamport timestamp 给出标量全序, 满足「a → b ⇒ ts(a) < ts(b)」但反向不成立 — 无法区分「并发」与「因果」; vector clock 用 N 维向量 + 偏序, 能精确判定 a → b / b → a / a‖b 三种关系",
+        "两者完全等价, 只是命名不同",
+        "Vector clock 永远比 Lamport timestamp 节省空间",
+        "Lamport timestamp 需要严格物理时钟同步 (NTP), vector clock 不需要"
+      ],
+      "correct": 0,
+      "explanation": "Lamport (1978) 单标量 + max(local, recv)+1 规则, 只保证「a→b 蕴含 ts(a)<ts(b)」, 反向不成立, 无法区分并发与因果。Vector clock 用 N 维向量, 通过偏序 (v ≤ v′ 当且仅当所有维都 ≤) 精确捕获 happens-before, 代价是 O(N) 空间。Lamport / vector 都不需要物理时钟同步, 完全逻辑时钟。",
+      "source_ref": null,
+      "glossary": [
+        {"term": "Lamport timestamp", "def": "逻辑时钟，标量整数；更新规则：ts = max(local_ts, received_ts) + 1；满足「a→b ⇒ ts(a)<ts(b)」，但反向不成立"},
+        {"term": "Vector clock", "def": "向量时钟，N 维整数向量（N=进程数）；能精确判定事件因果关系：a→b、b→a、或并发(‖)"},
+        {"term": "happens-before (→)", "def": "Lamport 定义的偏序关系：① 同进程 a 在 b 前执行；② 消息发送→接收；③ 传递性。a→b 意味着 a 的结果可能影响 b"},
+        {"term": "偏序 (Partial Order)", "def": "并非所有元素都可比较的序；并发事件（互不 happens-before）就无法比较先后"},
+        {"term": "全序 (Total Order)", "def": "任意两个元素都可比较大小；Lamport 时间戳提供全序，但这个序不精确反映因果关系"},
+        {"term": "并发 (Concurrent, ‖)", "def": "两事件互不 happens-before：a⊄→b 且 b⊄→a；代表两者没有因果依赖关系"}
+      ],
+      "steps": [
+        {
+          "text": "Lamport 时钟的更新规则 — 标量逻辑时钟",
+          "diagram": "规则: 发送消息时附带自己的 ts；接收时 ts = max(local, received) + 1\n\nP1: e1(ts=1) ──→ e2(ts=2) ──send(ts=3)──────────────────────→\n                                         ↘\nP2:       e3(ts=1) ──→ e4(ts=2) ──recv(ts=4) ──→ e5(ts=5)"
+        },
+        {
+          "text": "Lamport 的根本缺陷 — 无法区分「因果」与「并发」",
+          "diagram": "P1 的事件 e_A (ts=4)\nP2 的事件 e_B (ts=4)\n\n两者时间戳相同，但我们不知道:\n  ① e_A → e_B  (A 先发生，影响了 B)？\n  ② e_B → e_A  (B 先发生，影响了 A)？\n  ③ e_A ‖ e_B  (两者并发，互无影响)？\n\n反向不成立: ts(a) < ts(b)  ≠>  a → b\n仅凭标量无法判断！"
+        },
+        {
+          "text": "Vector clock 的更新规则 — N 维向量",
+          "diagram": "N=2 个进程，向量 [P1的计数, P2的计数]\n\n规则: 发送时附带完整向量；接收时每维取 max，再自增自己那维\n\nP1: [1,0] ──→ [2,0] ──send[2,0]─────────────────→ [3,2]\n                              ↘                    ↗\nP2:         [0,1] ──→ [0,2] ──recv→merge[2,2]──→ [2,3]"
+        },
+        {
+          "text": "Vector clock 精确判定三种关系",
+          "diagram": "判定规则:\n  a → b  当且仅当 V(a) ≤ V(b) 且 V(a) ≠ V(b)  (每维都 ≤)\n  a ‖ b  当且仅当 V(a) ≰ V(b) 且 V(b) ≰ V(a)  (存在某维互相大)\n\n示例:\n  V(e_A) = [2, 0]   V(e_B) = [0, 2]\n\n  [2,0] ≤ [0,2]? → 2>0 → 不成立\n  [0,2] ≤ [2,0]? → 2>0 → 不成立\n  → e_A ‖ e_B (并发！) ✓"
+        },
+        {
+          "text": "空间代价与选择",
+          "diagram": "                Lamport timestamp    Vector clock\n─────────────────────────────────────────────────\n空间开销        O(1) 标量整数         O(N) 向量（N=进程数）\n能判断 a→b?     能（但反向无法推断）   能（精确）\n能判断 a‖b?     不能                  能\n需物理时钟?     不需要（纯逻辑）      不需要（纯逻辑）\n─────────────────────────────────────────────────\n实际应用: Git commit DAG / DynamoDB 版本冲突检测 → vector clock"
+        }
+      ]
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "networking",
+      "question": "关于 TCP Reno 中 fast retransmit 与 fast recovery 的关系, 以下哪项最准确?",
+      "options": [
+        "Fast retransmit 重传所有未确认包, fast recovery 重传单个最早未确认包",
+        "Fast retransmit 是收到 3 个 duplicate ACK 时立即重传; fast recovery 是重传后不进入 slow start, 而是把 `cwnd` 减半并继续 AIMD",
+        "Fast retransmit 必须配合 SACK, fast recovery 必须配合 selective NACK",
+        "Fast recovery 是 fast retransmit 的同义词"
+      ],
+      "correct": 1,
+      "explanation": "fast retransmit 解决「何时立即重传」; fast recovery 解决「重传后窗口如何恢复」 — Reno 系是减半 + AIMD, 避免回到 slow start。",
+      "source_ref": null,
+      "glossary": [
+        {"term": "cwnd (Congestion Window)", "def": "拥塞窗口，发送方维护的变量，控制「网络在途中最多允许多少字节未被确认」，是 TCP 拥塞控制的核心"},
+        {"term": "ssthresh", "def": "Slow Start Threshold，慢启动阈值；cwnd < ssthresh 时指数增长（slow start），cwnd ≥ ssthresh 时线性增长（congestion avoidance）"},
+        {"term": "slow start", "def": "TCP 连接初期或超时后，cwnd 从 1 MSS 开始每 RTT 翻倍增长，快速探测可用带宽"},
+        {"term": "AIMD", "def": "Additive Increase Multiplicative Decrease：线性增（每 RTT +1 MSS）、乘法减（丢包时 cwnd×0.5），TCP 公平性的数学基础"},
+        {"term": "duplicate ACK", "def": "重复确认：接收方收到乱序包时，对最后一个连续包重复发 ACK；连续 3 个 dup ACK 暗示中间某包可能丢失"},
+        {"term": "fast retransmit", "def": "收到 3 个重复 ACK 时立即重传对应包，不等重传超时计时器（RTO）到期"},
+        {"term": "fast recovery", "def": "fast retransmit 后不回 slow start，而是将 cwnd 减半并从 ssthresh 继续 AIMD 线性增长"}
+      ],
+      "steps": [
+        {
+          "text": "正常传输阶段 — cwnd 按 AIMD 增长",
+          "diagram": "cwnd\n  ↑\n12│          /\n  │        /\n 6│      /  (线性增长 +1/RTT)\n  │    /\n 1│──/   (slow start 指数增长)\n  └──────────────────→ 时间\n     ssthresh=8 之前指数，之后线性"
+        },
+        {
+          "text": "丢包信号 — 3 个重复 ACK 触发 fast retransmit",
+          "diagram": "发送方:  seg1  seg2  seg3  seg4  seg5\n接收方:  √     ×(丢) √     √     √\n\n接收方 ACK:\n  ACK1  (确认 seg1)\n  ACK1  (seg3到但seg2没到，重复确认seg1)\n  ACK1  (seg4到)\n  ACK1  (seg5到)\n   ↑ 3个 duplicate ACK！\n\n→ 发送方判断: seg2 大概率丢失，立即重传 seg2\n  （不等 RTO 超时，快了可能几百毫秒！）"
+        },
+        {
+          "text": "fast recovery — 重传后不回 slow start",
+          "diagram": "                     TCP Tahoe (旧)    TCP Reno (新)\n─────────────────────────────────────────────────────\n触发条件(3 dup ACK)    cwnd → 1         cwnd → cwnd/2\n之后行为              slow start 重来   ssthresh=cwnd/2\n                                        cwnd=ssthresh\n                                        继续线性 AIMD\n─────────────────────────────────────────────────────\ncwnd 变化:\nTahoe:  12 ─────────────→ 1 → 指数增长…   (慢恢复)\nReno:   12 ─────────────→ 6 → 线性增长…   (快恢复) ✓"
+        },
+        {
+          "text": "总结：两者的分工",
+          "diagram": "fast retransmit: 解决「何时重传」\n  → 3个dup ACK立即重传，比等RTO超时快 100-1000ms\n\nfast recovery:   解决「重传后窗口怎么变」\n  → cwnd减半而非归1，避免因单个丢包导致带宽急剧下降\n\n两者通常配套使用，共同减少单包丢失对吞吐量的冲击"
+        }
+      ]
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "networking",
+      "question": "gRPC 在 HTTP/2 之上提供 4 种 RPC 模式 (unary / server-streaming / client-streaming / bidi-streaming)。以下哪一种**不**是 gRPC 原生支持的 RPC 模式?",
+      "options": [
+        "Unary (一发一回)",
+        "Server-streaming (一发多回)",
+        "Client-streaming (多发一回)",
+        "「Broadcast」(服务端**主动**单向推给**所有**已连接客户端) — 这超出 HTTP/2 的 stream 即-请求-即-响应模型, 需在应用层用 fan-out / pub-sub (Kafka / Redis pub-sub) 实现"
+      ],
+      "correct": 3,
+      "explanation": "gRPC 4 种模式都建立在 HTTP/2 单 stream 上, request / response 都是同一 stream 内的 framed message 序列。Broadcast 需要服务端维护连接表 + 显式 fan-out, 不是 RPC 原语;Web 端常用 SSE / WebSocket 实现 server-push 广播。",
+      "source_ref": null,
+      "glossary": [
+        {"term": "gRPC", "def": "Google 开发的高性能 RPC 框架，基于 HTTP/2 传输和 Protobuf 序列化，支持多语言"},
+        {"term": "HTTP/2", "def": "HTTP 协议版本2，支持多路复用（单连接并发多个 stream）、头部压缩（HPACK）、二进制帧"},
+        {"term": "HTTP/2 stream", "def": "HTTP/2 连接内的双向字节流通道，一个 TCP 连接可并发多个独立 stream"},
+        {"term": "Unary RPC", "def": "单请求单响应，最基本的 RPC 模式，类似普通函数调用：Client 发一个请求，Server 返回一个响应"},
+        {"term": "Server-streaming", "def": "客户端发一个请求，服务端在同一个 stream 内返回一连串响应（如实时日志流）"},
+        {"term": "Client-streaming", "def": "客户端发送多个请求消息，服务端等收完后返回一个响应（如文件上传分块）"},
+        {"term": "Bidi-streaming", "def": "双向流，客户端和服务端都可以随时发送多条消息，完全异步（如实时聊天）"},
+        {"term": "Fan-out", "def": "将一条消息分发给多个下游消费者的操作；Broadcast 需要服务端维护连接列表并逐个推送"}
+      ],
+      "steps": [
+        {
+          "text": "四种 gRPC 模式图示 — 都是一对一的 stream",
+          "diagram": "① Unary:\n   Client ──[req]──────────────→ Server\n   Client ←──[res]────────────── Server\n\n② Server-streaming:\n   Client ──[req]──────────────→ Server\n   Client ←──[res1]─────────── Server\n   Client ←──[res2]─────────── Server\n   Client ←──[res3, END]─────── Server\n\n③ Client-streaming:\n   Client ──[req1]─────────────→ Server\n   Client ──[req2]─────────────→ Server\n   Client ──[req3, END]─────────→ Server\n   Client ←──[res]────────────── Server\n\n④ Bidi-streaming:\n   Client ⟺ Server  (双方随时可发，任意顺序)"
+        },
+        {
+          "text": "HTTP/2 stream 的本质 — 一对一",
+          "diagram": "一个 HTTP/2 连接内:\n\n  stream 1: Client1 ←──────────────────→ Server\n  stream 3: Client1 ←──────────────────→ Server\n  stream 5: Client1 ←──────────────────→ Server\n\n关键: 每个 stream 绑定到发起它的客户端\n服务端无法在一个 stream 里同时给多个客户端发消息\n→ stream 是一对一的双向信道，不是广播信道"
+        },
+        {
+          "text": "为什么 Broadcast 不是 gRPC 原语",
+          "diagram": "Broadcast 需要的模型:\n\n          ┌→ Client1\nServer ───┼→ Client2   (服务端主动一对多推送)\n          └→ Client3\n\ngRPC 实际上是:\n  Server ↔ Client1  (stream 1, 独立)\n  Server ↔ Client2  (stream 2, 独立)\n  Server ↔ Client3  (stream 3, 独立)\n\n要实现广播，服务端需要:\n  1. 维护所有已连接客户端的 stream 列表\n  2. 收到广播消息时，遍历列表逐个发送\n  3. 这是应用层 fan-out 逻辑，不是 gRPC/HTTP/2 原语"
+        },
+        {
+          "text": "实现广播的常见方案",
+          "diagram": "方案1: 服务端维护连接表\n  clients = [stream1, stream2, stream3, ...]\n  for stream in clients:\n      stream.send(message)    ← 手动 fan-out\n\n方案2: 消息队列解耦\n  Producer → Kafka/Redis Pub-Sub → 每个 consumer 有自己的\n  server-streaming gRPC 连接\n\n方案3 (浏览器端): WebSocket 或 SSE\n  → 更适合服务端主动推送场景，浏览器原生支持"
+        }
+      ]
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "concurrency",
+      "question": "关于 Linux kernel 大量使用的 RCU (Read-Copy-Update) 同步原语, 以下哪项最准确?",
+      "options": [
+        "读者必须持锁、写者无锁",
+        "读者**完全不持锁、近乎零开销** (仅需禁抢占); 写者拷贝整段数据修改后通过指针原子替换, 旧版本需等待「宽限期 (grace period, 所有 reader 完成上一次读临界区)」结束后才能回收",
+        "RCU 是 spinlock 的别名, 仅适用于极短临界区",
+        "RCU 自动消除 ABA 问题, 无需任何辅助手段"
+      ],
+      "correct": 1,
+      "explanation": "RCU 把代价从读者转移给写者: 读者侧 `rcu_read_lock()` 仅禁抢占, 几乎零开销; 写者复制 + 原子指针 swap + `synchronize_rcu()` 等所有读者退出后回收旧版本。适用于读多写少且读路径延迟敏感的场景 (路由表、dcache、IDR)。Grace period 由 quiescent state 检测实现, 不是固定时长。",
+      "source_ref": null,
+      "glossary": [
+        {"term": "RCU (Read-Copy-Update)", "def": "Linux 内核同步原语：读者完全无锁，写者通过「复制→修改→原子替换指针→等待宽限期→回收旧版本」来实现并发安全"},
+        {"term": "grace period (宽限期)", "def": "RCU 中写者等待的时间窗口：确保所有「在指针替换之前就开始的读临界区」全部结束，之后旧版本才能安全回收"},
+        {"term": "quiescent state", "def": "CPU/进程「不持有任何 RCU 读临界区引用」的状态；典型 quiescent state：进程发生调度切换。所有 CPU 都经历一次 quiescent state = grace period 结束"},
+        {"term": "rcu_read_lock()", "def": "标记进入 RCU 读临界区，仅禁止抢占（preempt_disable），不获取任何锁，开销近乎为零"},
+        {"term": "synchronize_rcu()", "def": "写者调用，阻塞等待所有 CPU 各经历一次 quiescent state，确保所有旧读者退出，然后才能安全 kfree 旧数据"},
+        {"term": "原子指针替换", "def": "用 rcu_assign_pointer()（本质是带内存屏障的 store）原子地将全局指针从旧数据切换到新数据，保证读者要么看到旧版本要么看到新版本，不会看到中间态"}
+      ],
+      "steps": [
+        {
+          "text": "读者路径 — 极轻量，只禁抢占，无锁",
+          "diagram": "读者代码:\n\n  rcu_read_lock();            ← 仅 preempt_disable()，O(1)\n  p = rcu_dereference(ptr);   ← 带 memory barrier 的指针读\n  use(p->field);              ← 安全使用数据\n  rcu_read_unlock();          ← preempt_enable()\n\n开销对比:\n  spinlock: 原子操作 + 可能自旋等待\n  mutex:    可能睡眠阻塞\n  rcu_read_lock: 约 1~2 条指令，接近零开销 ✓"
+        },
+        {
+          "text": "写者路径 — 复制→修改→原子替换→等待宽限期→回收",
+          "diagram": "写者代码:\n\n  old = ptr;\n  new = kmalloc(sizeof(*old));   ← 1. 分配新版本\n  *new = *old;                   ← 2. 复制旧数据\n  new->field = new_value;        ← 3. 修改副本（旧读者不受影响）\n  rcu_assign_pointer(ptr, new);  ← 4. 原子替换指针（读者现在看到新版本）\n  synchronize_rcu();             ← 5. 等待宽限期（确保无人还在用旧版本）\n  kfree(old);                    ← 6. 安全回收旧版本"
+        },
+        {
+          "text": "宽限期的工作原理 — quiescent state 检测",
+          "diagram": "时间轴:\n\nCPU0: ─[读临界区─────────]─调度─[新任务]─ ← quiescent state\nCPU1:    ─[读临界区──]─调度─[新任务]──────  ← quiescent state\nCPU2:        ─[读临界区──────────────...]─\n\n指针替换点: ↑\n                  ↑ grace period 开始\n                                  所有CPU各过一次调度 ↑\n                                  → grace period 结束\n                                  → kfree 旧版本安全！"
+        },
+        {
+          "text": "适用场景与限制",
+          "diagram": "✓ 适合:  读多写少 + 读路径延迟敏感\n         Linux 路由表(ip_rt_cache), 目录缓存(dcache)\n         ID 分配(IDR), 网络过滤规则\n\n✗ 不适合:\n  - 写操作频繁（每次写都要等宽限期，延迟高）\n  - 读临界区内需要睡眠（rcu_read_lock 区间内不能 schedule()）\n  - 需要强写-写互斥（RCU 不阻止并发写，需额外 lock）\n\n与 spinlock 对比:\n  spinlock: 读者也要争锁，高并发读时产生竞争\n  RCU:      读者完全无竞争，代价全压给写者"
+        }
+      ]
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "concurrency",
+      "question": "关于乐观锁 (Optimistic Concurrency Control, e.g. 版本号 / CAS) 与悲观锁 (Pessimistic, e.g. `SELECT ... FOR UPDATE`) 的工程权衡, 以下哪项最准确?",
+      "options": [
+        "乐观锁吞吐总是高于悲观锁",
+        "悲观锁完全避免冲突, 不需要任何回滚机制",
+        "二者底层实现完全等价, 仅命名不同",
+        "冲突率低时, 乐观锁吞吐更高 (无锁等待开销); 冲突率高时, 悲观锁更优 (避免反复重试 + 潜在活锁); 选择应基于实测冲突率, 而非默认偏好"
+      ],
+      "correct": 3,
+      "explanation": "乐观锁假设冲突罕见 — 读时不锁, 写时检查版本号 / CAS, 失败重试。高冲突下重试浪费 CPU 且可能活锁。悲观锁阻塞等待, 在高冲突下吞吐更高、延迟更稳定, 代价是引入死锁可能 — 需要锁超时 / 死锁检测。Web 类短事务多用乐观锁; 金融批处理类长事务多用悲观锁。",
+      "source_ref": null,
+      "glossary": [
+        {"term": "乐观锁 (Optimistic Lock)", "def": "假设冲突很少发生：读时不加锁，写时通过版本号或 CAS 验证「自读取以来数据未被修改」，失败则重试"},
+        {"term": "悲观锁 (Pessimistic Lock)", "def": "假设会有冲突：读时就加锁（SELECT…FOR UPDATE），其他事务必须等待锁释放，保守但避免重试"},
+        {"term": "CAS (Compare-And-Swap)", "def": "CPU 原子指令：比较内存当前值与期望值，相等则更新并返回成功，否则不修改返回失败"},
+        {"term": "版本号机制", "def": "每行数据有 version 字段；UPDATE 时 WHERE version=读到的旧值，若影响行数=0 说明被其他事务抢先修改"},
+        {"term": "SELECT...FOR UPDATE", "def": "悲观锁的 SQL 实现：读取行的同时加排他锁（X lock），事务提交/回滚前其他事务无法修改或锁定该行"},
+        {"term": "活锁 (Livelock)", "def": "多个事务不断重试，每次都互相碰撞失败，系统在运转但没有任何一个事务推进（区别于死锁：死锁是永远阻塞）"},
+        {"term": "死锁 (Deadlock)", "def": "两个以上事务互相持有对方需要的锁并等待，形成循环等待，永远无法推进，需超时或检测算法打破"}
+      ],
+      "steps": [
+        {
+          "text": "乐观锁的执行流程",
+          "diagram": "// 版本号机制\n\nStep1 - 读:\n  SELECT id, data, version FROM t WHERE id=1;\n  → data='old_value', version=5\n\nStep2 - 处理:\n  new_data = business_logic(data)  // 纯内存计算，无锁\n\nStep3 - 写:\n  UPDATE t SET data='new_value', version=6\n  WHERE id=1 AND version=5;      ← 条件锁定版本号\n\n  影响行数 = 1 → 成功 ✓\n  影响行数 = 0 → 版本已变（被抢先修改）→ 重试 ↩"
+        },
+        {
+          "text": "悲观锁的执行流程",
+          "diagram": "Step1 - 加锁读:\n  BEGIN;\n  SELECT * FROM t WHERE id=1 FOR UPDATE;  ← 立即加排他锁\n  → 其他事务若也执行此语句，会阻塞等待\n\nStep2 - 处理:\n  new_data = business_logic(data)\n\nStep3 - 写:\n  UPDATE t SET data='new_value' WHERE id=1;\n\nStep4 - 解锁:\n  COMMIT;  ← 释放锁，等待的事务才能继续"
+        },
+        {
+          "text": "冲突率对两种锁性能的影响",
+          "diagram": "吞吐量\n  ↑\n  │  乐观锁 \\\n  │           \\                悲观锁（基本平稳）\n  │            \\             ────────────────\n  │             \\          /\n  │              \\        /  乐观锁（高冲突时大量重试）\n  │               \\      /\n  └──────────────────────────────→ 冲突率\n                  ↑\n             交叉点（约30-50%冲突率）\n\n低冲突: 乐观锁无等待，吞吐高\n高冲突: 乐观锁反复重试浪费CPU，可能活锁；悲观锁有序排队更稳定"
+        },
+        {
+          "text": "选择建议",
+          "diagram": "场景                        建议\n──────────────────────────────────────────────\nWeb 短事务 + 读多写少        乐观锁（版本号）\n  例：帖子点赞、用户资料更新\n\n金融/库存 + 高并发争抢       根据实测冲突率选择\n  例：秒杀扣库存（高冲突）  → 悲观锁更稳\n  例：账单更新（低冲突）    → 乐观锁更快\n\n长事务 + 复杂业务逻辑        悲观锁\n  例：批量对账、批处理\n──────────────────────────────────────────────\n原则: 测量实际冲突率，而不是凭直觉选择！"
+        }
+      ]
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "data-structures",
+      "question": "一致性哈希 (consistent hashing) 相对简单 `hash(key) % N` 分片的**核心**优势是?",
+      "options": [
+        "节点数从 N 变 N±1 时, 仅约 `K/N` 的 key 需要迁移, 而不是几乎全部重洗",
+        "哈希计算速度更快",
+        "完全消除 hot key 现象",
+        "不需要虚拟节点也能均匀分布负载"
+      ],
+      "correct": 0,
+      "explanation": "简单 `% N` 在 N 变化时几乎所有 key 重映射, 不可扩缩。一致性哈希让 key 在环上的位置只受相邻节点影响, 加节点只迁移一段弧。Hot key / 均匀分布仍需虚拟节点配合。",
+      "source_ref": null,
+      "glossary": [
+        {"term": "一致性哈希 (Consistent Hashing)", "def": "将节点和 key 都映射到同一哈希环上，key 归属顺时针方向最近的节点；节点增减时只影响相邻的一段 key"},
+        {"term": "哈希环 (Hash Ring)", "def": "将哈希值空间 [0, 2^32) 首尾相连形成的逻辑环形结构，节点和 key 都映射到环上的某个位置"},
+        {"term": "hash(key) % N", "def": "简单取模分片：key 分配到第 hash(key)%N 号节点；N 变化时几乎所有 key 的映射都会改变"},
+        {"term": "虚拟节点 (Virtual Node)", "def": "每个物理节点对应哈希环上的多个虚拟点，使各节点承担的 key 范围更均匀，缓解数据倾斜"},
+        {"term": "热点 key (Hot Key)", "def": "访问频率极高的特定 key，即使哈希分布均匀，某些 key 天然流量大，需要额外机制（如本地缓存/拆分）处理"},
+        {"term": "数据迁移", "def": "节点增删时，需要将部分 key-value 对从旧节点移到新节点；迁移量是衡量一致性哈希优劣的关键指标"}
+      ],
+      "steps": [
+        {
+          "text": "简单 hash(key) % N 的问题 — 节点变化导致大规模迁移",
+          "diagram": "N=3 时的映射:\n  key_A: hash=100 → 100%3=1 → Node1\n  key_B: hash=200 → 200%3=2 → Node2\n  key_C: hash=300 → 300%3=0 → Node0\n\n加入第4个节点 N=4:\n  key_A: hash=100 → 100%4=0 → Node0  ← 变了！\n  key_B: hash=200 → 200%4=0 → Node0  ← 变了！\n  key_C: hash=300 → 300%4=0 → Node0  ← 变了！\n\n几乎所有 key 都需要重新迁移 → 缓存全失效 → 雪崩！"
+        },
+        {
+          "text": "一致性哈希环 — 节点和 key 都映射到同一个环",
+          "diagram": "哈希环 (0 → 2^32, 首尾相连):\n\n             Node A (hash=100)\n            /\n    0 ─────────────────── 2^32\n          \\                   /\n      Node C (hash=300)  Node B (hash=200)\n\nkey 归属规则: 顺时针找最近的节点\n  key hash=150 → 顺时针 → Node B(200) ← 归属 B\n  key hash=250 → 顺时针 → Node C(300) ← 归属 C\n  key hash=350 → 顺时针 → 绕一圈到 Node A(100+360°) ← 归属 A"
+        },
+        {
+          "text": "加入新节点 — 只迁移一小段",
+          "diagram": "加入 Node D (hash=130):\n\n             Node A(100)  Node D(130)\n            /           \\\n    0 ─────────────────────────── 2^32\n          \\                           /\n      Node C(300)              Node B(200)\n\n影响范围:\n  key hash ∈ (100, 130] → 原来归 B，现在归 D  ← 需迁移\n  key hash ∈ (130, 200] → 仍然归 B            ← 不变！\n  其他所有范围                                  ← 完全不变！\n\n迁移量 ≈ K/N（只有相邻段受影响）✓"
+        },
+        {
+          "text": "虚拟节点 — 解决均匀分布问题",
+          "diagram": "问题: 3个节点可能因哈希值分布不均，导致某节点承担80%的key\n\n解法: 每个物理节点在环上放多个虚拟点\n  Node A → A1(hash=50),  A2(hash=180), A3(hash=350)\n  Node B → B1(hash=100), B2(hash=220), B3(hash=280)\n  Node C → C1(hash=140), C2(hash=260), C3(hash=320)\n\n  虚拟节点越多，各物理节点承担的key比例越接近均等 1/N\n\n注意: 虚拟节点不能解决热点 key，因为热点是访问频率高，不是分布不均"
+        }
+      ]
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "algorithms",
+      "question": "将 N 个有序数组合并为一个有序数组 (总 K 个元素), 用最小堆的总体时间复杂度是?",
+      "options": [
+        "`O(N log N)`, 与总元素数 K 无关",
+        "`O(K log N)`, 其中 K 是总元素数, N 是数组数",
+        "`O(K × N)`",
+        "`O(K)`, 堆操作摊销 O(1)"
+      ],
+      "correct": 1,
+      "explanation": "堆中始终维持 ≤ N 个元素, K 个元素各做一次 push + 一次 pop, 每次 O(log N), 总 O(K log N)。比两两归并的 O(K log N) 等价但常数更低。",
+      "source_ref": null,
+      "glossary": [
+        {"term": "最小堆 (Min-Heap)", "def": "父节点总是小于等于子节点的完全二叉树；堆顶始终是最小元素；插入/删除均为 O(log n)"},
+        {"term": "K 路归并", "def": "同时合并 K 个有序序列的算法；最小堆解法：将各序列当前最小元素放入堆，每次取堆顶"},
+        {"term": "O(K log N)", "def": "K 个总元素，每个元素做一次入堆+一次出堆，每次操作堆中最多有 N 个元素，所以每次 O(log N)，总计 O(K log N)"},
+        {"term": "两两归并", "def": "逐对合并 N 个数组的方法；时间复杂度同样是 O(K log N)，但常数因子比最小堆法大"}
+      ],
+      "steps": [
+        {
+          "text": "算法初始化 — 将每个数组的第一个元素入堆",
+          "diagram": "输入:\n  数组1: [1, 5, 9]\n  数组2: [2, 6, 7]\n  数组3: [3, 4, 8]\n\n初始化最小堆 (存储 [值, 来自哪个数组, 当前下标]):\n  堆: [(1, arr1, 0), (2, arr2, 0), (3, arr3, 0)]\n        ↑ 堆顶最小"
+        },
+        {
+          "text": "循环：每次弹出堆顶，补充该数组的下一个元素",
+          "diagram": "Round 1: pop (1, arr1, 0) → 输出 [1]\n         push arr1下一个: (5, arr1, 1)\n         堆: [(2, arr2), (3, arr3), (5, arr1)]\n\nRound 2: pop (2, arr2, 0) → 输出 [1, 2]\n         push (6, arr2, 1)\n         堆: [(3, arr3), (5, arr1), (6, arr2)]\n\nRound 3: pop (3, arr3, 0) → 输出 [1, 2, 3]\n         push (4, arr3, 1)\n         堆: [(4, arr3), (5, arr1), (6, arr2)]\n\nRound 4: pop (4, arr3) → 输出 [1,2,3,4], push (8, arr3)\n...\n最终输出: [1, 2, 3, 4, 5, 6, 7, 8, 9] ✓"
+        },
+        {
+          "text": "时间复杂度分析",
+          "diagram": "关键观察:\n  堆中始终维持 ≤ N 个元素（每个数组最多一个代表元素）\n  → 堆操作代价 = O(log N)\n\n操作次数:\n  K 个元素，每个元素恰好:\n    - 1次 push 入堆: O(log N)\n    - 1次 pop 出堆: O(log N)\n    共 2K 次堆操作\n\n总时间复杂度:\n  T = 2K × O(log N) = O(K log N) ✓\n\n对比暴力法 O(K×N):\n  K=10^6, N=100 时:\n  O(K log N) = 10^6 × 7 ≈ 7×10^6 次操作\n  O(K × N)   = 10^6 × 100 = 10^8 次操作\n  相差约14倍！"
+        }
+      ]
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "algorithms",
+      "question": "Reservoir sampling (蓄水池抽样) 算法 R 用于从**未知长度**的数据流中均匀随机抽取 K 个样本, 关于其性质以下哪项最准确?",
+      "options": [
+        "流处理完毕时, 任意元素被选中的概率均为 K/N (N 为流总长度); 单遍 O(N) 时间 + 仅 O(K) 内存; 无需事先得知 N",
+        "必须先扫描整个流得到 N, 才能保证抽样均匀",
+        "时间复杂度为 O(N²), 因每个新元素都需重排所有已选样本",
+        "仅适用于元素可比较 (具备全序) 的流"
+      ],
+      "correct": 0,
+      "explanation": "算法 R: 前 K 个元素直接入池; 第 i (i > K) 个元素以概率 K/i 替换池中随机一个旧元素。归纳证明: 任一已扫元素最终被选概率恒为 K/N。无序、无比较, 单遍流式, 是分布式日志采样 / 大数据近似计算的标配。",
+      "source_ref": null,
+      "glossary": [
+        {"term": "蓄水池抽样 (Reservoir Sampling)", "def": "从长度事先未知的流中均匀随机抽取 K 个样本的单遍算法，保证每个元素被选中的概率均等"},
+        {"term": "流式算法 (Streaming Algorithm)", "def": "只能单遍扫描数据、使用亚线性内存的算法；蓄水池抽样是经典例子：O(K) 内存，O(N) 时间，O(1) 每步"},
+        {"term": "均匀随机抽样", "def": "每个元素被选入最终结果集的概率相等（= K/N），不偏向流的前段或后段"},
+        {"term": "替换概率 K/i", "def": "算法核心：第 i 个元素（i>K）以概率 K/i 被纳入蓄水池，替换随机一个现有元素"},
+        {"term": "归纳证明", "def": "蓄水池抽样正确性证明方法：假设前 i 个元素各以概率 K/i 在池中，证明处理第 i+1 个后各元素概率变为 K/(i+1)"}
+      ],
+      "steps": [
+        {
+          "text": "算法步骤（K=2，从流中抽2个）",
+          "diagram": "初始化:\n  蓄水池 reservoir = []\n\n处理前 K=2 个元素 (直接入池):\n  i=1: reservoir = [A]\n  i=2: reservoir = [A, B]     ← 池满\n\n处理后续每个元素 i > K:\n  i=3 (元素C): 以概率 2/3 保留\n    → 若保留: 随机选 reservoir[0] 或 reservoir[1] 替换\n    → 若不保留: 丢弃\n\n  i=4 (元素D): 以概率 2/4=1/2 保留\n  i=5 (元素E): 以概率 2/5 保留\n  ..."
+        },
+        {
+          "text": "正确性证明 — 数学归纳法",
+          "diagram": "命题: 处理完前 i 个元素后，每个元素在蓄水池中的概率 = K/i\n\n基础: i=K 时，前K个元素全在池中，各概率 = K/K = 1 ✓\n\n归纳步: 假设处理前 i 个后各概率 = K/i\n处理第 i+1 个元素:\n\n  新元素被选中: 概率 = K/(i+1)                     ✓\n\n  旧元素保留下来的概率:\n    = P(旧元素在池中) × P(新元素没选中 OR 没替换我)\n    = (K/i) × [1 - (K/(i+1)) × (1/K)]\n    = (K/i) × [1 - 1/(i+1)]\n    = (K/i) × (i/(i+1))\n    = K/(i+1)                                      ✓\n\n归纳完成！N个元素处理完后，每个的概率 = K/N ✓"
+        },
+        {
+          "text": "关键性质汇总",
+          "diagram": "性质              值         说明\n──────────────────────────────────────────────\n时间复杂度         O(N)       每个元素只处理一次\n空间复杂度         O(K)       蓄水池大小固定\n需要提前知道 N?    不需要     单遍流式处理\n需要元素可比较?    不需要     只需随机选位置\n任意元素入选概率   K/N        均匀随机保证\n──────────────────────────────────────────────\n应用场景:\n  - 分布式系统日志采样\n  - 大数据近似统计（A/B test 分流）\n  - 数据库查询结果随机抽样\n  - 机器学习训练集在线采样"
+        }
+      ]
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "os",
+      "question": "关于使用 `mmap` 读取大文件 vs `read()` 系统调用, 以下哪一项**不**是 `mmap` 的优势?",
+      "options": [
+        "避免内核态 / 用户态之间的数据拷贝 (零拷贝, 直接把 page cache 映射到用户地址空间)",
+        "多个进程同时只读 `mmap` 同一文件时, **每个进程独占一份物理页拷贝**, 进程间隔离性更好",
+        "随机访问场景下不需要显式 `lseek`, 直接按地址解引用",
+        "支持通过 `madvise(MADV_SEQUENTIAL)` / `MADV_WILLNEED` 等显式提示, 配合内核 readahead 预热 page cache"
+      ],
+      "correct": 1,
+      "explanation": "B 是错误描述: 多进程只读 `mmap` 同一文件时**共享同一份物理页** (这正是 mmap 节省内存的来源)。A / C / D 都是真实优势。`mmap` 的真正代价在于 page fault 不可预测 (大文件随机访问可能产生大量 major fault)、对小文件 / 一次性短读反而比 `read()` 慢 (建立映射的开销摊不开)、错误处理不友好 (SIGBUS 而非 errno)。",
+      "source_ref": null,
+      "glossary": [
+        {"term": "mmap", "def": "系统调用，将文件或设备的一段内容直接映射到进程虚拟地址空间；访问地址即访问文件，无需 read/write 系统调用"},
+        {"term": "page cache", "def": "内核维护的文件内容缓存；无论用 read() 还是 mmap，文件数据都会进入 page cache，多进程共享"},
+        {"term": "零拷贝 (Zero-Copy)", "def": "mmap 让用户进程直接访问 page cache 中的物理页，省去「内核缓冲区→用户缓冲区」的数据拷贝"},
+        {"term": "page fault", "def": "访问虚拟地址时该页尚未在物理内存中触发的异常；内核负责从磁盘读入数据（major fault，ms级）"},
+        {"term": "major page fault", "def": "需要从磁盘加载数据的 page fault，延迟较高（通常几毫秒）；mmap 随机访问大文件时可能触发大量"},
+        {"term": "SIGBUS", "def": "信号，mmap 映射的文件在访问时被截断或底层设备错误时触发；不像 read() 返回 errno 那样可预期处理"},
+        {"term": "madvise()", "def": "系统调用，向内核提示内存访问模式；MADV_SEQUENTIAL=顺序访问(触发预读), MADV_WILLNEED=即将访问(预热页缓存)"}
+      ],
+      "steps": [
+        {
+          "text": "read() 系统调用的数据路径 — 有一次额外拷贝",
+          "diagram": "进程调用 read(fd, buf, n):\n\n  磁盘 ──IO──→ 内核 page cache\n               │\n               │ [数据拷贝] ← 这次拷贝是 read() 的主要开销\n               ↓\n             用户态缓冲区 buf\n               │\n               ↓\n             应用代码处理\n\n每次 read() = 1次系统调用 + 1次内核→用户拷贝"
+        },
+        {
+          "text": "mmap 的数据路径 — 零拷贝，直接访问 page cache",
+          "diagram": "进程调用 mmap(fd, offset, len):\n\n  磁盘 ──IO──→ 内核 page cache\n                    ↑\n               建立页表映射（虚拟地址→page cache 物理页）\n\n  进程访问地址 ptr[i]:\n    → 触发 page fault（若尚未加载）\n    → 内核从磁盘读入 page cache\n    → 建立物理页映射\n    → 进程直接读写物理页（无拷贝！）\n\n省去了「内核缓冲区 → 用户缓冲区」这次拷贝 ✓"
+        },
+        {
+          "text": "选项 B 为什么是错的 — 多进程共享同一份物理页",
+          "diagram": "错误理解（选项B说的）:\n  进程A的 mmap → 独占物理页副本A\n  进程B的 mmap → 独占物理页副本B\n\n正确情况:\n  进程A的虚拟地址 0x7f00 ──┐\n                            ├→ 同一份 page cache 物理页\n  进程B的虚拟地址 0x6f00 ──┘\n\n这正是 mmap 节省内存的核心！\n  1000个进程 mmap 同一个 100MB 共享库 → 物理内存只需 100MB\n  若每个进程独占 → 需要 100GB！"
+        },
+        {
+          "text": "mmap 的真实代价 — 什么时候反而比 read() 慢",
+          "diagram": "mmap 的代价:\n\n1. Page fault 延迟不可预测\n   随机访问大文件 → 大量 major page fault\n   → 延迟抖动（jitter）严重，P99 延迟高\n\n2. 小文件/一次性读取\n   mmap 建立映射+页表的开销 > 一次 read() 的拷贝开销\n   → 得不偿失\n\n3. 错误处理不友好\n   read() 错误 → errno（可预期）\n   mmap 文件被删/截断 → SIGBUS（进程崩溃！）\n\n选择建议:\n  大文件 + 随机访问 + 多进程共享 → mmap ✓\n  顺序读取 + 一次性 + 小文件     → read() ✓"
+        }
+      ]
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "security",
+      "question": "关于 JWT 相对服务器侧 session cookie 的**主要权衡**, 以下哪项最准确?",
+      "options": [
+        "JWT 自包含 + 服务器侧无状态便于水平扩展, 但**主动失效困难** (需要短 TTL + refresh token 或服务器侧吊销名单)",
+        "JWT 总是比 session cookie 更安全",
+        "JWT 仅适用于 OAuth 2.0",
+        "JWT 必须用对称密钥, 不能用非对称 (RSA / EdDSA)"
+      ],
+      "correct": 0,
+      "explanation": "JWT 把验证状态推给客户端, 服务器靠签名验证即可放行 ⇒ 无状态、易水平扩展; 代价是签发后无法立即作废, 必须短 TTL + refresh 或维护 revocation list 缓解。HS256 (对称) 与 RS256 / EdDSA (非对称) 都是合法签名算法。",
+      "source_ref": null,
+      "glossary": [
+        {"term": "JWT (JSON Web Token)", "def": "自包含令牌，格式为 Header.Payload.Signature（Base64 编码）；服务器用签名验证，不需要查数据库"},
+        {"term": "session cookie", "def": "服务器存储 session 状态（用户信息、权限等），客户端只持有 session ID；服务器需要查存储来验证"},
+        {"term": "无状态 (Stateless)", "def": "服务器不存储任何客户端会话信息；JWT 把状态编码在令牌里，任意服务器实例都能验证"},
+        {"term": "TTL (Time To Live)", "def": "令牌有效期；JWT 通常设 5~15 分钟短 TTL，到期后用 refresh token 换取新 JWT"},
+        {"term": "refresh token", "def": "长效令牌（如7天），存储在 HttpOnly cookie 中，用于在 JWT 过期时换取新的短效 access token"},
+        {"term": "revocation list (吊销名单)", "def": "服务器维护的已失效 JWT 列表；每次验证需查询该列表，本质上又变成有状态了"},
+        {"term": "水平扩展 (Horizontal Scaling)", "def": "通过增加服务器实例数来提升处理能力；JWT 因无状态，任意实例都能独立验证，天然支持水平扩展"}
+      ],
+      "steps": [
+        {
+          "text": "Session Cookie 架构 — 有状态，需要共享存储",
+          "diagram": "Client       Server1      Redis / DB\n  │─login──────→│            │\n  │←──cookie────│─存session──→│\n  │              │            │\n  │─请求+cookie──→│            │\n  │              │─查session──→│\n  │              │←──数据──────│\n  │←──响应───────│            │\n\n扩展到 Server2:\n  Server2 也要能查同一个 Redis\n  → 所有实例共享 session 存储 → 存储成为瓶颈"
+        },
+        {
+          "text": "JWT 架构 — 无状态，任意实例独立验证",
+          "diagram": "Client         Server1/2/3 (无状态)\n  │─login──────→│\n  │←──JWT───────│  (Header.Payload.Signature)\n  │               \n  │─请求+JWT────→Server1  (只需验签，无需查DB)\n  │─请求+JWT────→Server2  (同样验签，完美扩展)\n  │─请求+JWT────→Server3\n\nJWT Payload 示例:\n  { \"sub\": \"user123\", \"exp\": 1718000000, \"roles\": [\"admin\"] }\n  服务器验证签名 + 检查 exp → 立即决定是否授权"
+        },
+        {
+          "text": "JWT 的主要缺陷 — 无法主动失效",
+          "diagram": "场景: 用户注销登录，JWT 还有 23 小时才过期\n\nSession cookie:\n  Server: DELETE session:{id} from Redis → 立即失效 ✓\n\nJWT:\n  方案1: 等 TTL 过期          → 不安全（23小时内仍可用）\n  方案2: 短 TTL (5分钟)        → 用 refresh token 频繁续签\n  方案3: revocation list       → 每次验证要查 list，又变有状态了\n\n→ 没有完美方案，工程上选择短 TTL + refresh token 是最常见折衷"
+        },
+        {
+          "text": "签名算法澄清 — 对称和非对称都支持",
+          "diagram": "HS256 (HMAC-SHA256) — 对称:\n  签名和验证使用同一个密钥\n  适合: 单体服务，密钥不需要在多个服务间共享\n\nRS256 (RSA-SHA256) — 非对称:\n  私钥签名，公钥验证\n  适合: 微服务，认证服务用私钥签，其他服务用公钥验\n  可以公开公钥（JWKS endpoint），无需共享私钥\n\nEdDSA (Ed25519) — 现代非对称:\n  比 RSA 更快更短，安全性相当\n\n→ 选项D「必须用对称密钥」是错的！"
+        }
+      ]
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "distributed-systems",
+      "question": "分布式 lease (租约) 系统中, 旧 leader 因 GC pause / CPU stall 「假死」后又苏醒, 可能在租约已被 coordinator 转交给新 leader 之后**仍然**向 storage 发起写入。防止这类「僵尸 leader」破坏一致性的标准做法是?",
+      "options": [
+        "把租约时长设得足够长, 让假死时间小于租约 — 物理上无法假死后还活着",
+        "Leader 在每次写入前都向 coordinator 做一次 ping 心跳确认仍持有租约",
+        "Storage 端用 username + password 等认证手段验证 leader 身份",
+        "引入单调递增的 **fencing token**: coordinator 颁发租约时附带递增 token, leader 写入必带 token, storage 记录已见最大 token 并拒收任何 `token < max_seen` 的请求 — 即使旧 leader 苏醒, 它持有的 token 已被新 leader 的更大 token 屏蔽"
+      ],
+      "correct": 3,
+      "explanation": "Martin Kleppmann 《DDIA》ch8 详述: GC pause / 进程 stall 长度无界 (尤其 JVM 大堆), 单靠租约时长无法兜底。Fencing token 把「时间正确性」转化为「序号单调性」, storage 侧做一次比较即可拒绝过期请求。这也是 Chubby / etcd / ZooKeeper 客户端文档强调「lease + fencing token 一起用」的根本原因。",
+      "source_ref": null,
+      "glossary": [
+        {"term": "lease (租约)", "def": "Coordinator 授予 leader 一定时间内独占操作权的机制；到期后 coordinator 可将租约转给新 leader"},
+        {"term": "GC pause", "def": "JVM 等运行时的垃圾回收停顿，期间进程完全冻结；大堆环境下可达数秒甚至数十秒，无法预测"},
+        {"term": "僵尸 leader (Zombie Leader)", "def": "租约已过期但进程自以为仍是 leader 的旧节点；GC 结束后苏醒，不知道已有新 leader"},
+        {"term": "fencing token", "def": "Coordinator 颁发租约时附带的单调递增整数；后颁发的 token 总是比旧的大，storage 用它排斥过期请求"},
+        {"term": "单调递增", "def": "后颁发的 token 总是大于所有之前颁发过的 token，不会重复或回退，是 fencing 机制的关键保证"},
+        {"term": "DDIA", "def": "《Designing Data-Intensive Applications》，Martin Kleppmann 著，分布式系统工程实践的权威参考书"}
+      ],
+      "steps": [
+        {
+          "text": "问题场景 — 僵尸 leader 导致脑裂写入",
+          "diagram": "时间轴:\n\n T=0s:  Leader1 获得租约（有效期=10s），token=33\n T=5s:  Leader1 进入 JVM GC pause（进程完全冻结！）\n T=11s: Coordinator 租约超时 → 颁发新租约给 Leader2，token=34\n T=12s: Leader2 正常工作，向 storage 写入（带 token=34）\n T=35s: Leader1 GC pause 结束，以为自己仍是 leader\n T=35s: Leader1 向 storage 发起写入（带旧 token=33）\n\n→ 若 storage 不做检查，两个 leader 同时写入 → 数据损坏！"
+        },
+        {
+          "text": "为什么「延长租约时长」无法根本解决问题",
+          "diagram": "错误逻辑: \"把租约设成 60s，GC 最多几秒，不会有问题\"\n\n反驳:\n  GC pause 时长无界（JVM 大堆 CMS/G1 Full GC 可达数十秒）\n  进程 stall 原因多样（swap、虚拟机迁移、内核 bug）\n  只要 stall 时长 > 租约时长的任何情况都存在\n  → 不存在「足够长的租约」能覆盖所有场景\n\n租约解决的是「探活」问题，不能解决「写入顺序」问题"
+        },
+        {
+          "text": "为什么「ping 心跳确认」也不够",
+          "diagram": "错误逻辑: \"每次写前都 ping coordinator 确认仍是 leader\"\n\n反驳:\n  ping 成功 → Leader1 确认自己是 leader\n     ↓\n  网络延迟 100ms\n     ↓\n  Leader1 发出写入请求\n     ↑\n  在这 100ms 内，GC pause 发生 → 租约被转给 Leader2！\n\nping 和写入之间存在时间窗口，无法保证原子性\n→ check-then-act 的经典 TOCTOU 竞争条件"
+        },
+        {
+          "text": "Fencing token 的工作原理 — 把时间正确性转为序号单调性",
+          "diagram": "Coordinator 颁发:\n  Leader1 获得租约 + token = 33\n  Leader2 获得租约 + token = 34  （单调递增）\n\nStorage 维护: max_seen_token\n\nLeader2 写入（token=34）:\n  storage: max_seen = 34 → 接受\n\nLeader1 苏醒后写入（token=33）:\n  storage: 33 < max_seen(34) → 拒绝！✓\n\n设计优雅之处:\n  storage 只需一次整数比较\n  无需知道谁是当前 leader\n  无需网络通信验证\n  O(1) 开销，完全无锁"
+        }
+      ]
+    },
+    {
+      "category": "general-cs",
+      "subcategory": "system-design",
+      "question": "关于消息系统的 at-least-once 投递语义, 以下哪项是**消费者**必须承担的责任?",
+      "options": [
+        "Broker 会自动保证每条消息恰好被处理一次 (exactly-once), 消费者无需做特殊处理",
+        "必须使用同步 commit, 否则违反 at-least-once",
+        "消费者需要实现幂等或显式去重 (例如按 message-id dedupe), 因为 broker 在 commit 失败 / rebalance / 网络抖动时会重投同一条消息",
+        "at-least-once 与 at-most-once 在投递保证上等价, 由消费者自由选择"
+      ],
+      "correct": 2,
+      "explanation": "at-least-once 保证不丢, 但允许重复 (消费者 commit 前崩溃或网络抖动 ⇒ 重投递)。把「恰好一次效果」推回应用层 — 要么副作用天然幂等, 要么基于 message-id / 业务键去重。同步 commit 只是一种实现细节, 不是 at-least-once 的定义。",
+      "source_ref": null,
+      "glossary": [
+        {"term": "at-least-once", "def": "消息投递语义：保证每条消息至少被投递一次，可能重复，但不会丢失；消费者需自行处理重复"},
+        {"term": "at-most-once", "def": "消息投递语义：每条消息最多投递一次，可能丢失但不会重复；先 commit 再处理，若处理期间崩溃则消息丢失"},
+        {"term": "exactly-once", "def": "消息投递语义：每条消息恰好被投递并处理一次，既不丢失也不重复；实现最复杂，通常需要事务协调"},
+        {"term": "幂等 (Idempotent)", "def": "操作执行多次与执行一次效果相同；如 SET x=5（幂等）vs x+=1（非幂等）；天然幂等的操作无需去重"},
+        {"term": "去重 (Deduplication)", "def": "通过 message-id 等唯一标识检测并跳过已处理的重复消息；通常用去重表（Redis/DB）记录已处理的 ID"},
+        {"term": "message-id", "def": "消息的全局唯一标识符，由 producer 或 broker 生成；消费者用它来识别是否已经处理过该消息"},
+        {"term": "consumer group rebalance", "def": "Kafka 消费者组成员变化时（新增/宕机）触发的分区重新分配；rebalance 期间可能重复投递部分消息"}
+      ],
+      "steps": [
+        {
+          "text": "三种投递语义的根本区别",
+          "diagram": "at-most-once (先commit再处理):\n  收到消息 → commit offset → 处理业务逻辑\n  若处理期间崩溃 → 消息已commit → 不会重投 → 消息丢失！\n  特点: 可能丢失，不会重复\n\nat-least-once (先处理再commit):\n  收到消息 → 处理业务逻辑 → commit offset\n  若commit前崩溃   → 消息未commit → 重启后重投 → 重复处理！\n  特点: 不会丢失，可能重复\n\nexactly-once:\n  处理 + commit 在一个原子事务中\n  特点: 不丢失，不重复（实现复杂，性能有损耗）"
+        },
+        {
+          "text": "at-least-once 重复投递的常见场景",
+          "diagram": "消费者处理流程:\n\n T=0: 收到消息 msg_id=「order-789」\n T=1: 调用支付接口 ← 耗时操作开始\n T=2: 支付成功\n T=3: ← 网络抖动 / consumer crash / rebalance\n       (offset 尚未 commit!)\n\nKafka Broker: 超时，重新分配分区给另一个消费者\n\n T=4: 另一消费者收到同一条 msg_id=「order-789」\n T=5: 再次调用支付接口 → 重复扣款！\n\n→ 消费者必须能检测并处理重复"
+        },
+        {
+          "text": "方案1 — 幂等操作（业务天然安全）",
+          "diagram": "幂等 vs 非幂等:\n\n幂等操作 (多次执行 = 一次执行):\n  「设置用户状态为 ACTIVATED」     ← 重复执行结果相同 ✓\n  「将订单状态更新为 PAID」         ← 已是PAID则跳过 ✓\n  「INSERT ... ON DUPLICATE IGNORE」 ← 重复插入被忽略 ✓\n\n非幂等操作 (必须额外去重):\n  「账户余额 += 100」               ← 重复执行多扣！\n  「发送短信给用户」                ← 重复执行多发！\n  「创建订单」                       ← 重复执行多建！"
+        },
+        {
+          "text": "方案2 — 显式去重表",
+          "diagram": "去重表设计:\n\n┌─────────────────────────────────────────┐\n│ 去重表 (dedupe_log)                      │\n│ message_id VARCHAR PK | processed_at     │\n├─────────────────────────────────────────┤\n│ order-789            | 2026-06-18 10:00  │\n└─────────────────────────────────────────┘\n\n消费者处理逻辑:\n  def handle(msg):\n    if dedupe_table.exists(msg.id):\n      return  # 已处理，跳过\n    \n    with transaction:\n      do_business_logic(msg)       # 执行业务\n      dedupe_table.insert(msg.id)  # 记录已处理（同一事务）\n\n注意: 业务操作和去重记录必须在同一事务中，否则仍有竞争！"
+        }
+      ]
+    }
+  ]
+}</script>
+<script>
+(function () {
+  "use strict";
+
+  const dataEl = document.getElementById('exam-data');
+  const exam = JSON.parse(dataEl.textContent);
+  const root = document.getElementById('questions-root');
+  const titleEl = document.getElementById('exam-title');
+  const metaEl = document.getElementById('exam-meta');
+  const progressEl = document.getElementById('progress');
+  const submitBtn = document.getElementById('submit-btn');
+  const resultCard = document.getElementById('result-card');
+  const resultScore = document.getElementById('result-score');
+  const resultBreakdown = document.getElementById('result-breakdown');
+
+  const total = exam.questions.length;
+  const userAnswers = new Array(total).fill(null);
+  let submitted = false;
+
+  titleEl.textContent = exam.title || '通用 CS 练习';
+  metaEl.textContent = '生成于 ' + (exam.generated_at || '') + ' · 共 ' + total + ' 题 · 提交前可自由修改答案';
+  progressEl.textContent = '已作答 0 / ' + total;
+
+  function escapeHTML(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+
+  function renderInlineCode(text) {
+    if (text == null) return '';
+    const parts = String(text).split(/(`[^`]+`)/g);
+    return parts.map(function (part) {
+      if (part.length >= 2 && part[0] === '`' && part[part.length - 1] === '`') {
+        return '<code>' + escapeHTML(part.slice(1, -1)) + '</code>';
+      }
+      return escapeHTML(part);
+    }).join('');
+  }
+
+  // Render **bold** and `code` in step text
+  function renderStepText(text) {
+    if (text == null) return '';
+    // First escape, then un-escape for markdown patterns
+    let s = escapeHTML(text);
+    // **bold**
+    s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    // `code`
+    s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+    return s;
+  }
+
+  exam.questions.forEach(function (q, idx) {
+    const card = document.createElement('div');
+    card.className = 'question-card';
+    card.id = 'q-' + idx;
+
+    const isKB = q.category === 'knowledge-base';
+    const tagClass = isKB ? 'kb' : 'cs';
+    const tagText = isKB ? '知识库' : '通用 CS';
+    const subText = q.subcategory ? ' · ' + escapeHTML(q.subcategory) : '';
+
+    let optionsHTML = '';
+    q.options.forEach(function (opt, i) {
+      optionsHTML += ''
+        + '<li data-idx="' + i + '">'
+        +   '<input type="radio" name="q-' + idx + '" value="' + i + '" id="q-' + idx + '-opt-' + i + '">'
+        +   '<span class="option-letter">' + String.fromCharCode(65 + i) + '.</span>'
+        +   '<label class="option-text" for="q-' + idx + '-opt-' + i + '">' + renderInlineCode(opt) + '</label>'
+        +   '<span class="verdict" data-verdict-for="' + i + '"></span>'
+        + '</li>';
+    });
+
+    // Glossary section
+    let glossaryHTML = '';
+    if (q.glossary && q.glossary.length > 0) {
+      let items = q.glossary.map(function (g) {
+        return '<div class="glossary-item">'
+          + '<div class="term">' + escapeHTML(g.term) + '</div>'
+          + '<div class="term-def">' + escapeHTML(g.def) + '</div>'
+          + '</div>';
+      }).join('');
+      glossaryHTML = '<div class="glossary-section" id="glo-' + idx + '">'
+        + '<div class="label">名词解释</div>'
+        + '<div class="glossary-grid">' + items + '</div>'
+        + '</div>';
+    }
+
+    // Steps section
+    let stepsHTML = '';
+    if (q.steps && q.steps.length > 0) {
+      let stepsInner = q.steps.map(function (step, si) {
+        let diagramHTML = step.diagram
+          ? '<pre class="diagram">' + escapeHTML(step.diagram) + '</pre>'
+          : '';
+        return '<div class="step-item">'
+          + '<div class="step-number">' + (si + 1) + '</div>'
+          + '<div class="step-body">'
+          + '<div class="step-text">' + renderStepText(step.text) + '</div>'
+          + diagramHTML
+          + '</div>'
+          + '</div>';
+      }).join('');
+      stepsHTML = '<div class="steps-section" id="steps-' + idx + '">'
+        + '<div class="label">逐步解析</div>'
+        + stepsInner
+        + '</div>';
+    }
+
+    const explanationHTML = ''
+      + '<div class="explanation" id="exp-' + idx + '">'
+      +   '<div class="label">解析</div>'
+      +   '<div class="exp-body">' + renderInlineCode(q.explanation) + '</div>'
+      +   (q.source_ref ? '<span class="source-ref">来源:' + escapeHTML(q.source_ref) + '</span>' : '')
+      + '</div>'
+      + glossaryHTML
+      + stepsHTML;
+
+    card.innerHTML = ''
+      + '<div class="question-header">'
+      +   '<span class="tag ' + tagClass + '">' + tagText + '</span>'
+      +   '<span class="question-number">第 ' + (idx + 1) + ' 题</span>'
+      +   '<span>' + subText + '</span>'
+      + '</div>'
+      + '<div class="question-text">' + renderInlineCode(q.question) + '</div>'
+      + '<ul class="options">' + optionsHTML + '</ul>'
+      + explanationHTML;
+
+    root.appendChild(card);
+
+    card.querySelectorAll('.options li').forEach(function (li) {
+      li.addEventListener('click', function () {
+        if (submitted) return;
+        const input = li.querySelector('input[type=radio]');
+        if (!input) return;
+        input.checked = true;
+        userAnswers[idx] = parseInt(input.value, 10);
+        card.querySelectorAll('.options li').forEach(function (other) {
+          other.classList.remove('selected');
+        });
+        li.classList.add('selected');
+        updateProgress();
+      });
+    });
+  });
+
+  function updateProgress() {
+    const answered = userAnswers.filter(function (a) { return a !== null; }).length;
+    progressEl.textContent = '已作答 ' + answered + ' / ' + total;
+    submitBtn.disabled = answered !== total;
+  }
+
+  submitBtn.addEventListener('click', function () {
+    if (submitted) return;
+    submitted = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = '已提交';
+
+    let correctCount = 0;
+    let kbCorrect = 0, kbTotal = 0, csCorrect = 0, csTotal = 0;
+
+    exam.questions.forEach(function (q, idx) {
+      const card = document.getElementById('q-' + idx);
+      const userAns = userAnswers[idx];
+      const isCorrect = userAns === q.correct;
+      if (isCorrect) correctCount++;
+      if (q.category === 'knowledge-base') {
+        kbTotal++;
+        if (isCorrect) kbCorrect++;
+      } else {
+        csTotal++;
+        if (isCorrect) csCorrect++;
+      }
+
+      card.classList.add(isCorrect ? 'correct' : 'wrong');
+      card.querySelectorAll('.options li').forEach(function (li) {
+        const i = parseInt(li.getAttribute('data-idx'), 10);
+        const input = li.querySelector('input[type=radio]');
+        if (input) input.disabled = true;
+        li.classList.add('locked');
+        const verdict = li.querySelector('.verdict');
+        if (i === q.correct) {
+          li.classList.add('correct-option');
+          if (verdict) {
+            verdict.classList.add('correct');
+            verdict.textContent = '✓ 正确答案';
+          }
+        }
+        if (i === userAns && !isCorrect) {
+          li.classList.add('wrong-option');
+          if (verdict) {
+            verdict.classList.add('wrong');
+            verdict.textContent = '✗ 你的选择';
+          }
+        }
+      });
+
+      document.getElementById('exp-' + idx).classList.add('show');
+
+      const gloEl = document.getElementById('glo-' + idx);
+      if (gloEl) gloEl.classList.add('show');
+
+      const stepsEl = document.getElementById('steps-' + idx);
+      if (stepsEl) stepsEl.classList.add('show');
+    });
+
+    resultScore.textContent = correctCount + ' / ' + total;
+    const ratio = correctCount / total;
+    if (ratio >= 0.8) resultScore.classList.add('high');
+    else if (ratio < 0.5) resultScore.classList.add('low');
+
+    const breakdownParts = [];
+    if (kbTotal > 0) breakdownParts.push('知识库 ' + kbCorrect + '/' + kbTotal);
+    if (csTotal > 0) breakdownParts.push('通用 CS ' + csCorrect + '/' + csTotal);
+    resultBreakdown.textContent = breakdownParts.join(' · ');
+
+    resultCard.classList.add('show');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+})();
+</script>
+</body>
+</html>
